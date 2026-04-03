@@ -1,7 +1,7 @@
 import "dotenv/config";
-import Fastify from "fastify";
-import cors from "@fastify/cors";
-import jwt from "@fastify/jwt";
+import fastify from "fastify";
+import fastifyCors from "@fastify/cors";
+import fastifyJwt from "@fastify/jwt";
 import { env } from "./lib/env.js";
 import { authRoutes } from "./routes/auth.js";
 import { userRoutes } from "./routes/users.js";
@@ -10,14 +10,14 @@ import { sessionRoutes } from "./routes/sessions.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import { startCallWorker } from "./jobs/callQueue.js";
 
-const app = Fastify({ logger: true });
+const app = fastify({ logger: true });
 
-await app.register(cors, {
+await app.register(fastifyCors, {
   origin: process.env.CORS_ORIGIN ?? "http://localhost:3000",
   credentials: true,
 });
 
-await app.register(jwt, {
+await app.register(fastifyJwt, {
   secret: env.JWT_SECRET,
 });
 
@@ -39,6 +39,6 @@ try {
   await app.listen({ port: env.PORT, host: "0.0.0.0" });
   console.log(`[API] Server running on port ${env.PORT}`);
 } catch (err) {
-  app.log.error(err);
+  console.error(err);
   process.exit(1);
 }

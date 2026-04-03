@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { Anthropic } from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { env } from "../lib/env.js";
 import { prisma } from "../lib/prisma.js";
