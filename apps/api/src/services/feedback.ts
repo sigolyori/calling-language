@@ -113,7 +113,13 @@ export async function generateFeedback(sessionId: string): Promise<void> {
     data: {
       sessionId,
       userId: session.userId,
-      ...parsed,
+      fluencyScore: parsed.fluencyScore,
+      vocabularyScore: parsed.vocabularyScore,
+      grammarScore: parsed.grammarScore,
+      strengths: parsed.strengths,
+      improvements: parsed.improvements,
+      specificExamples: parsed.specificExamples,
+      overallSummary: parsed.overallSummary,
     },
   });
 

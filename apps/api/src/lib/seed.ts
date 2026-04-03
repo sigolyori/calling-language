@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { prisma } from "./prisma.js";
-import bcrypt from "bcryptjs";
+import * as bcrypt from "bcryptjs";
 
 async function main() {
   const passwordHash = await bcrypt.hash("password123", 12);
