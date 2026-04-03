@@ -1,6 +1,7 @@
 {
   "name": "@calling-language/api",
   "version": "1.0.0",
+  "packageManager": "pnpm@9.0.0",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
