@@ -8,6 +8,7 @@ import { userRoutes } from "./routes/users.js";
 import { scheduleRoutes } from "./routes/schedules.js";
 import { sessionRoutes } from "./routes/sessions.js";
 import { webhookRoutes } from "./routes/webhooks.js";
+import { callRoutes } from "./routes/calls.js";
 import { startCallWorker } from "./jobs/callQueue.js";
 
 const app = fastify({ logger: true });
@@ -27,6 +28,7 @@ await app.register(userRoutes);
 await app.register(scheduleRoutes);
 await app.register(sessionRoutes);
 await app.register(webhookRoutes);
+await app.register(callRoutes);
 
 // Health check
 app.get("/health", async () => ({ status: "ok" }));

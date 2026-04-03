@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI English Coach — Test UI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      color: #1a1a1a;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e5e5e5;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 { font-size: 16px; font-weight: 600; }
+    #user-status { font-size: 13px; color: #666; }
+    #logout-btn {
+      display: none;
+      font-size: 13px;
+      color: #e53e3e;
+      background: none;
+      border: none;
+      cursor: pointer;
+      margin-left: 12px;
+    }
+
+    main { max-width: 680px; margin: 0 auto; padding: 24px 16px; }
+
+    /* ── Sections ── */
+    .section {
+      background: #fff;
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .section h2 {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #888;
+      margin-bottom: 16px;
+    }
+
+    /* ── Forms ── */
+    .form-row { margin-bottom: 12px; }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+    input, select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+    }
+    input:focus, select:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px #dbeafe; }
+
+    .btn {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: background .15s;
+    }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .btn-danger { background: #fee2e2; color: #b91c1c; }
+    .btn-danger:hover { background: #fecaca; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+    /* ── Response box ── */
+    .response {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+      display: none;
+      line-height: 1.5;
+    }
+    .response.ok { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+    .response.err { background: #fff1f2; border: 1px solid #fecdd3; color: #be123c; }
+
+    /* ── Tab navigation ── */
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-btn {
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid #e5e5e5;
+      background: #fff;
+      color: #555;
+      transition: all .15s;
+    }
+    .tab-btn.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ── Schedule pills ── */
+    .day-picker { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+    .day-btn {
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 13px;
+      border: 1px solid #ddd;
+      cursor: pointer;
+      background: #f9f9f9;
+      color: #555;
+      transition: all .15s;
+    }
+    .day-btn.selected { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+
+    /* ── Session / schedule cards ── */
+    .card {
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .card:last-child { margin-bottom: 0; }
+    .card-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-gray { background: #f3f4f6; color: #6b7280; }
+    .badge-red { background: #fee2e2; color: #b91c1c; }
+    .badge-orange { background: #ffedd5; color: #c2410c; }
+    .meta { font-size: 12px; color: #888; margin-top: 4px; }
+    .summary { font-size: 13px; color: #444; margin-top: 6px; }
+    .scores { display: flex; gap: 10px; margin-top: 8px; }
+    .score { text-align: center; }
+    .score-num {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 15px;
+      margin: 0 auto 2px;
+    }
+    .score-label { font-size: 10px; color: #888; }
+    .score-1, .score-2 { background: #fee2e2; color: #b91c1c; }
+    .score-3 { background: #fef3c7; color: #b45309; }
+    .score-4 { background: #dbeafe; color: #1d4ed8; }
+    .score-5 { background: #dcfce7; color: #15803d; }
+
+    .empty { text-align: center; color: #aaa; padding: 32px 0; font-size: 14px; }
+
+    /* ── Call test box ── */
+    .callbox {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .callbox p { font-size: 13px; color: #1e40af; line-height: 1.6; }
+    .callbox strong { display: block; margin-bottom: 4px; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📞 AI English Coach — Test UI</h1>
+  <div>
+    <span id="user-status">Not signed in</span>
+    <button id="logout-btn" onclick="logout()">Sign out</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Tabs ── -->
+  <div class="tabs" id="tabs">
+    <button class="tab-btn active" onclick="switchTab('auth')">Auth</button>
+    <button class="tab-btn" onclick="switchTab('profile')">Profile</button>
+    <button class="tab-btn" onclick="switchTab('schedules')">Schedules</button>
+    <button class="tab-btn" onclick="switchTab('sessions')">Sessions</button>
+    <button class="tab-btn" onclick="switchTab('call')">📞 Test Call</button>
+  </div>
+
+  <!-- ══════════════ AUTH TAB ══════════════ -->
+  <div id="tab-auth" class="tab-pane active">
+
+    <div class="section">
+      <h2>Sign Up</h2>
+      <div class="form-row"><label>Name</label><input id="su-name" placeholder="홍길동" /></div>
+      <div class="form-row"><label>Email</label><input id="su-email" type="email" placeholder="test@example.com" /></div>
+      <div class="form-row"><label>Password (min 8 chars)</label><input id="su-pw" type="password" placeholder="••••••••" /></div>
+      <div class="form-row"><label>Phone (E.164 format)</label><input id="su-phone" placeholder="+821012345678" /></div>
+      <div class="form-row">
+        <label>English Level</label>
+        <select id="su-level"><option value="beginner">Beginner</option><option value="intermediate" selected>Intermediate</option></select>
+      </div>
+      <div class="form-row">
+        <label>Timezone</label>
+        <select id="su-tz">
+          <option value="Asia/Seoul">Asia/Seoul (KST)</option>
+          <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+          <option value="America/New_York">America/New_York (EST)</option>
+          <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+          <option value="Europe/London">Europe/London (GMT)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="doSignup()">Create Account</button>
+      <div id="su-res" class="response"></div>
+    </div>
+
+    <div class="section">
+      <h2>Login</h2>
+      <div class="form-row"><label>Email</label><input id="li-email" type="email" placeholder="test@example.com" /></div>
+      <div class="form-row"><label>Password</label><input id="li-pw" type="password" placeholder="••••••••" /></div>
+      <button class="btn btn-primary" onclick="doLogin()">Sign In</button>
+      <div id="li-res" class="response"></div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════ PROFILE TAB ══════════════ -->
+  <div id="tab-profile" class="tab-pane">
+    <div class="section">
+      <h2>My Profile</h2>
+      <button class="btn btn-secondary" onclick="loadProfile()">Refresh Profile</button>
+      <div id="profile-res" class="response"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ SCHEDULES TAB ══════════════ -->
+  <div id="tab-schedules" class="tab-pane">
+
+    <div class="section">
+      <h2>Create Schedule</h2>
+      <div class="form-row">
+        <label>Practice Days</label>
+        <div class="day-picker">
+          <button class="day-btn selected" data-day="1">Mon</button>
+          <button class="day-btn selected" data-day="2">Tue</button>
+          <button class="day-btn selected" data-day="3">Wed</button>
+          <button class="day-btn selected" data-day="4">Thu</button>
+          <button class="day-btn selected" data-day="5">Fri</button>
+          <button class="day-btn" data-day="6">Sat</button>
+          <button class="day-btn" data-day="7">Sun</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Call Time (HH:MM — currently treated as UTC)</label>
+        <input id="sch-time" type="time" value="09:00" />
+      </div>
+      <button class="btn btn-primary" onclick="createSchedule()">Save Schedule</button>
+      <div id="sch-res" class="response"></div>
+    </div>
+
+    <div class="section">
+      <h2>My Schedules</h2>
+      <button class="btn btn-secondary" onclick="loadSchedules()">Refresh</button>
+      <div id="schedules-list" style="margin-top:14px;"></div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════ SESSIONS TAB ══════════════ -->
+  <div id="tab-sessions" class="tab-pane">
+    <div class="section">
+      <h2>Session History</h2>
+      <button class="btn btn-secondary" onclick="loadSessions()">Refresh</button>
+      <div id="sessions-list" style="margin-top:14px;"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ TEST CALL TAB ══════════════ -->
+  <div id="tab-call" class="tab-pane">
+    <div class="callbox">
+      <strong>📞 Trigger a Call to Your Phone Right Now</strong>
+      <p>This sends an immediate outbound call via Vapi to your registered phone number — without waiting for the cron schedule. Use this to test the full loop instantly.</p>
+    </div>
+
+    <div class="section">
+      <h2>Immediate Call Trigger</h2>
+      <p style="font-size:13px;color:#555;margin-bottom:14px;">
+        Make sure you're signed in and your phone number is registered correctly. The AI will call you within ~10 seconds.
+      </p>
+      <button class="btn btn-primary" onclick="triggerCall()" id="call-btn">📞 Call Me Now</button>
+      <div id="call-res" class="response"></div>
+    </div>
+
+    <div class="section">
+      <h2>What to Expect</h2>
+      <ol style="font-size:13px;color:#555;line-height:2;padding-left:18px;">
+        <li>Your phone will ring (caller ID: +1 (314) 439-8004)</li>
+        <li>Answer and talk with the AI in English for a few minutes</li>
+        <li>Say "goodbye" or hang up to end the session</li>
+        <li>Wait ~30 seconds, then check the Sessions tab for feedback</li>
+      </ol>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // ─── Config ───────────────────────────────────────────────────────────────
+  const API = "https://calling-language-production.up.railway.app";
+
+  // ─── Auth helpers ─────────────────────────────────────────────────────────
+  function getToken() { return localStorage.getItem("cl_token"); }
+  function setToken(t) { localStorage.setItem("cl_token", t); }
+  function clearToken() { localStorage.removeItem("cl_token"); }
+
+  function authHeaders() {
+    const t = getToken();
+    return { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) };
+  }
+
+  function updateHeader() {
+    const token = getToken();
+    const status = document.getElementById("user-status");
+    const logoutBtn = document.getElementById("logout-btn");
+    if (token) {
+      status.textContent = "Signed in ✓";
+      logoutBtn.style.display = "inline";
+    } else {
+      status.textContent = "Not signed in";
+      logoutBtn.style.display = "none";
+    }
+  }
+
+  function logout() {
+    clearToken();
+    updateHeader();
+    showRes("li-res", { message: "Signed out" }, true);
+  }
+
+  // ─── UI helpers ───────────────────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById(`tab-${name}`).classList.add("active");
+    event.target.classList.add("active");
+
+    if (name === "profile") loadProfile();
+    if (name === "schedules") loadSchedules();
+    if (name === "sessions") loadSessions();
+  }
+
+  function showRes(id, data, ok) {
+    const el = document.getElementById(id);
+    el.style.display = "block";
+    el.className = `response ${ok ? "ok" : "err"}`;
+    el.textContent = JSON.stringify(data, null, 2);
+  }
+
+  // ─── API calls ────────────────────────────────────────────────────────────
+  async function apiFetch(path, opts = {}) {
+    const res = await fetch(API + path, {
+      headers: authHeaders(),
+      ...opts,
+    });
+    const data = await res.json().catch(() => ({ error: res.statusText }));
+    return { ok: res.ok, data };
+  }
+
+  // ─── Auth ─────────────────────────────────────────────────────────────────
+  async function doSignup() {
+    const body = {
+      name: document.getElementById("su-name").value.trim(),
+      email: document.getElementById("su-email").value.trim(),
+      password: document.getElementById("su-pw").value,
+      phoneNumber: document.getElementById("su-phone").value.trim(),
+      englishLevel: document.getElementById("su-level").value,
+      timezone: document.getElementById("su-tz").value,
+    };
+    const { ok, data } = await apiFetch("/api/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    showRes("su-res", data, ok);
+    if (ok && data.token) { setToken(data.token); updateHeader(); }
+  }
+
+  async function doLogin() {
+    const body = {
+      email: document.getElementById("li-email").value.trim(),
+      password: document.getElementById("li-pw").value,
+    };
+    const { ok, data } = await apiFetch("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    showRes("li-res", data, ok);
+    if (ok && data.token) { setToken(data.token); updateHeader(); }
+  }
+
+  // ─── Profile ──────────────────────────────────────────────────────────────
+  async function loadProfile() {
+    const { ok, data } = await apiFetch("/api/users/me");
+    showRes("profile-res", data, ok);
+  }
+
+  // ─── Schedules ────────────────────────────────────────────────────────────
+  document.querySelectorAll(".day-btn").forEach(btn => {
+    btn.addEventListener("click", () => btn.classList.toggle("selected"));
+  });
+
+  async function createSchedule() {
+    const selectedDays = [...document.querySelectorAll(".day-btn.selected")]
+      .map(b => Number(b.dataset.day));
+    if (!selectedDays.length) {
+      showRes("sch-res", { error: "Select at least one day" }, false);
+      return;
+    }
+    const timeHHMM = document.getElementById("sch-time").value;
+    const { ok, data } = await apiFetch("/api/schedules", {
+      method: "POST",
+      body: JSON.stringify({ daysOfWeek: selectedDays, timeHHMM }),
+    });
+    showRes("sch-res", data, ok);
+    if (ok) loadSchedules();
+  }
+
+  const DAY_NAMES = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  async function loadSchedules() {
+    const { ok, data } = await apiFetch("/api/schedules");
+    const container = document.getElementById("schedules-list");
+    if (!ok) { container.innerHTML = `<div class="empty">${data.error || "Error"}</div>`; return; }
+    const list = Array.isArray(data) ? data : [];
+    if (!list.length) { container.innerHTML = `<div class="empty">No schedules yet. Create one above.</div>`; return; }
+    container.innerHTML = list.map(s => `
+      <div class="card">
+        <div class="card-row">
+          <div>
+            <strong style="font-size:14px;">${s.daysOfWeek.map(d => DAY_NAMES[d]).join(", ")}</strong>
+            <div class="meta">at ${s.timeHHMM} UTC</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span class="badge ${s.isActive ? "badge-green" : "badge-gray"}">${s.isActive ? "Active" : "Paused"}</span>
+            <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteSchedule('${s.id}')">Delete</button>
+          </div>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  async function deleteSchedule(id) {
+    if (!confirm("Delete this schedule?")) return;
+    const { ok } = await apiFetch(`/api/schedules/${id}`, { method: "DELETE" });
+    if (ok) loadSchedules();
+  }
+
+  // ─── Sessions ─────────────────────────────────────────────────────────────
+  const STATUS_CLASS = {
+    completed: "badge-green", in_progress: "badge-blue",
+    scheduled: "badge-gray", failed: "badge-red", missed: "badge-orange"
+  };
+
+  function scoreClass(n) { return `score-${Math.min(5, Math.max(1, n))}`; }
+
+  async function loadSessions() {
+    const { ok, data } = await apiFetch("/api/sessions");
+    const container = document.getElementById("sessions-list");
+    if (!ok) { container.innerHTML = `<div class="empty">${data.error || "Error"}</div>`; return; }
+    const list = data.sessions || [];
+    if (!list.length) { container.innerHTML = `<div class="empty">No sessions yet. Complete a call to see results here.</div>`; return; }
+    container.innerHTML = list.map(s => {
+      const date = new Date(s.createdAt).toLocaleString();
+      const duration = s.durationSecs ? `${Math.floor(s.durationSecs/60)}m ${s.durationSecs%60}s` : "—";
+      const fb = s.feedback;
+      const scoresHtml = fb ? `
+        <div class="scores">
+          ${[["Fluency", fb.fluencyScore], ["Vocab", fb.vocabularyScore], ["Grammar", fb.grammarScore]].map(([l, v]) => `
+            <div class="score">
+              <div class="score-num ${scoreClass(v)}">${v}</div>
+              <div class="score-label">${l}</div>
+            </div>
+          `).join("")}
+        </div>
+        <div class="summary">${fb.overallSummary}</div>
+      ` : "";
+      return `
+        <div class="card">
+          <div class="card-row">
+            <div>
+              <span class="badge ${STATUS_CLASS[s.status] || "badge-gray"}">${s.status.replace("_", " ")}</span>
+              <div class="meta">${date} · ${duration}</div>
+            </div>
+          </div>
+          ${scoresHtml}
+        </div>
+      `;
+    }).join("");
+  }
+
+  // ─── Test Call ────────────────────────────────────────────────────────────
+  async function triggerCall() {
+    const btn = document.getElementById("call-btn");
+    btn.disabled = true;
+    btn.textContent = "Calling...";
+    // Get user profile first to get phone number
+    const { ok: pOk, data: profile } = await apiFetch("/api/users/me");
+    if (!pOk) {
+      showRes("call-res", { error: "Not signed in. Please login first." }, false);
+      btn.disabled = false; btn.textContent = "📞 Call Me Now";
+      return;
+    }
+
+    // Check for active schedule — we'll piggyback on the first active schedule
+    const { ok: sOk, data: schedules } = await apiFetch("/api/schedules");
+    const activeSchedule = sOk && Array.isArray(schedules) ? schedules.find(s => s.isActive) : null;
+
+    if (!activeSchedule) {
+      showRes("call-res", {
+        error: "No active schedule found.",
+        hint: "Go to Schedules tab → create a schedule first, then come back here to trigger a test call."
+      }, false);
+      btn.disabled = false; btn.textContent = "📞 Call Me Now";
+      return;
+    }
+
+    // Trigger call via internal endpoint
+    const { ok, data } = await apiFetch("/api/calls/trigger", {
+      method: "POST",
+      body: JSON.stringify({ scheduleId: activeSchedule.id }),
+    });
+    showRes("call-res", ok ? {
+      success: true,
+      message: `📞 Calling ${profile.phoneNumber}...`,
+      note: "Answer when it rings! Go to Sessions tab after the call to see your feedback."
+    } : data, ok);
+    btn.disabled = false; btn.textContent = "📞 Call Me Now";
+  }
+
+  // ─── Init ─────────────────────────────────────────────────────────────────
+  updateHeader();
+</script>
+</body>
+</html>
