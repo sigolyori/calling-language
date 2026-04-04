@@ -1,6 +1,7 @@
 {
   "framework": "nextjs",
   "installCommand": "npm install",
+  "buildCommand": "npx prisma db push && next build",
   "crons": [
     {
       "path": "/api/cron/trigger-calls",
