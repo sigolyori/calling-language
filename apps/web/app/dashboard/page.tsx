@@ -8,6 +8,7 @@ import {
   getSessions,
   getSchedules,
   deleteSchedule,
+  triggerCall,
   clearToken,
   type User,
   type SessionSummary,
@@ -25,6 +26,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [calling, setCalling] = useState(false);
+  const [callMsg, setCallMsg] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -47,6 +50,19 @@ export default function DashboardPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function handleTriggerCall() {
+    setCalling(true);
+    setCallMsg("");
+    try {
+      await triggerCall();
+      setCallMsg("전화를 거는 중입니다. 잠시 후 전화가 옵니다!");
+    } catch (err) {
+      setCallMsg(err instanceof Error ? err.message : "전화 실패");
+    } finally {
+      setCalling(false);
+    }
+  }
 
   async function handleDeleteSchedule(id: string) {
     if (!confirm("Delete this schedule?")) return;
@@ -91,6 +107,26 @@ export default function DashboardPage() {
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
+        {/* Test Call */}
+        <section className="card bg-green-50 border border-green-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-semibold text-green-800">지금 바로 연습하기</div>
+              <div className="text-sm text-green-600 mt-0.5">스케줄 없이 즉시 AI 코치에게 전화를 받아보세요</div>
+            </div>
+            <button
+              onClick={handleTriggerCall}
+              disabled={calling}
+              className="btn-primary bg-green-600 hover:bg-green-700 whitespace-nowrap"
+            >
+              {calling ? "연결 중..." : "📞 지금 전화"}
+            </button>
+          </div>
+          {callMsg && (
+            <div className="mt-3 text-sm text-green-700 font-medium">{callMsg}</div>
+          )}
+        </section>
+
         {/* Schedules */}
         <section>
           <div className="flex items-center justify-between mb-4">

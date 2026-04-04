@@ -94,7 +94,8 @@ export default function OnboardingPage() {
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              Your local time (based on the timezone you selected)
+              UTC 기준 시간으로 입력하세요. 한국(KST)은 UTC+9 입니다.
+              예) 오전 9시 KST → 00:00 UTC, 오후 9시 KST → 12:00 UTC
             </p>
           </div>
 

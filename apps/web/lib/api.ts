@@ -179,3 +179,8 @@ export async function getTranscript(sessionId: string): Promise<TranscriptData> 
 export async function getFeedback(sessionId: string): Promise<Feedback> {
   return request(`/api/sessions/${sessionId}/feedback`);
 }
+
+// --- Calls ---
+export async function triggerCall(): Promise<{ sessionId: string; callId: string }> {
+  return request("/api/calls/trigger", { method: "POST" });
+}
