@@ -32,13 +32,20 @@ export async function POST(req: NextRequest) {
         ? "completed"
         : "failed";
 
-    const transcriptContent = messages.map((m: { role: string; message: string; time: number }) => ({
-      role: m.role,
-      text: m.message,
-      timestamp: m.time,
+    // Vapi uses "bot" for AI and "user" for the caller.
+    // Filter out system/tool messages and normalise "bot" → "assistant".
+    type VapiMessage = { role: string; message?: string; text?: string; time?: number };
+    const convo = (messages as VapiMessage[]).filter(
+      (m) => m.role === "bot" || m.role === "user"
+    );
+
+    const transcriptContent = convo.map((m) => ({
+      role: m.role === "bot" ? "assistant" : "user",
+      text: (m.message ?? m.text ?? "").trim(),
+      timestamp: m.time ?? 0,
     }));
-    const rawText = messages
-      .map((m: { role: string; message: string }) => `${m.role === "assistant" ? "AI" : "User"}: ${m.message}`)
+    const rawText = transcriptContent
+      .map((m) => `${m.role === "assistant" ? "AI" : "User"}: ${m.text}`)
       .join("\n");
 
     await prisma.session.updateMany({
