@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMe, updateMe, createSchedule, updateSchedule } from "@/lib/api";
 
@@ -30,7 +30,7 @@ const TIMEZONES = [
   "Australia/Sydney",
 ];
 
-export default function OnboardingPage() {
+function OnboardingForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit"); // present when editing an existing schedule
@@ -197,5 +197,13 @@ export default function OnboardingPage() {
         </form>
       </div>
     </main>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>}>
+      <OnboardingForm />
+    </Suspense>
   );
 }
