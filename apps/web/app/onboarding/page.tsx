@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createSchedule } from "@/lib/api";
+import { getMe, updateMe, createSchedule } from "@/lib/api";
 
 const DAYS = [
   { label: "Mon", value: 1 },
@@ -14,12 +14,44 @@ const DAYS = [
   { label: "Sun", value: 7 },
 ];
 
+const TIMEZONES = [
+  "Asia/Seoul",
+  "Asia/Tokyo",
+  "Asia/Shanghai",
+  "Asia/Singapore",
+  "Asia/Bangkok",
+  "Asia/Kolkata",
+  "Europe/London",
+  "Europe/Paris",
+  "America/New_York",
+  "America/Los_Angeles",
+  "America/Chicago",
+  "America/Sao_Paulo",
+  "Australia/Sydney",
+];
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]);
   const [timeHHMM, setTimeHHMM] = useState("09:00");
+  const [timezone, setTimezone] = useState("Asia/Seoul");
+  const [originalTimezone, setOriginalTimezone] = useState("Asia/Seoul");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    getMe()
+      .then((user) => {
+        setTimezone(user.timezone);
+        setOriginalTimezone(user.timezone);
+      })
+      .catch(() => {
+        // fallback: use browser timezone
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        setTimezone(tz);
+        setOriginalTimezone(tz);
+      });
+  }, []);
 
   function toggleDay(day: number) {
     setSelectedDays((prev) =>
@@ -36,6 +68,10 @@ export default function OnboardingPage() {
     setError("");
     setLoading(true);
     try {
+      // Update timezone if changed
+      if (timezone !== originalTimezone) {
+        await updateMe({ timezone });
+      }
       await createSchedule({ daysOfWeek: selectedDays, timeHHMM });
       router.push("/dashboard");
     } catch (err) {
@@ -62,6 +98,22 @@ export default function OnboardingPage() {
               {error}
             </div>
           )}
+
+          <div>
+            <label className="label">My timezone</label>
+            <select
+              className="input"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+            >
+              {TIMEZONES.map((tz) => (
+                <option key={tz} value={tz}>{tz}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              All schedule times below are in this timezone.
+            </p>
+          </div>
 
           <div>
             <label className="label">Practice days</label>
@@ -94,8 +146,7 @@ export default function OnboardingPage() {
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              UTC 기준 시간으로 입력하세요. 한국(KST)은 UTC+9 입니다.
-              예) 오전 9시 KST → 00:00 UTC, 오후 9시 KST → 12:00 UTC
+              The AI coach will call you at this time ({timezone}).
             </p>
           </div>
 

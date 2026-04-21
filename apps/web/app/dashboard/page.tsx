@@ -152,7 +152,9 @@ export default function DashboardPage() {
                     <div className="font-medium text-sm">
                       {s.daysOfWeek.map((d) => DAY_NAMES[d]).join(", ")}
                     </div>
-                    <div className="text-gray-500 text-sm">at {s.timeHHMM}</div>
+                    <div className="text-gray-500 text-sm">
+                      at {s.timeHHMM} <span className="text-xs text-gray-400">({user?.timezone})</span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span

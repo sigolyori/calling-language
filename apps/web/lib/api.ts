@@ -76,6 +76,10 @@ export async function getMe(): Promise<User> {
   return request("/api/users/me");
 }
 
+export async function updateMe(data: Partial<Pick<User, "name" | "phoneNumber" | "timezone">>): Promise<User> {
+  return request("/api/users/me", { method: "PATCH", body: JSON.stringify(data) });
+}
+
 // --- Schedules ---
 export interface Schedule {
   id: string;
