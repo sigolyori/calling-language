@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getMe, updateMe, createSchedule } from "@/lib/api";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getMe, updateMe, createSchedule, updateSchedule } from "@/lib/api";
 
 const DAYS = [
   { label: "Mon", value: 1 },
@@ -32,6 +32,9 @@ const TIMEZONES = [
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit"); // present when editing an existing schedule
+
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]);
   const [timeHHMM, setTimeHHMM] = useState("09:00");
   const [timezone, setTimezone] = useState("Asia/Seoul");
@@ -40,18 +43,30 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    getMe()
-      .then((user) => {
+    async function init() {
+      try {
+        const user = await getMe();
         setTimezone(user.timezone);
         setOriginalTimezone(user.timezone);
-      })
-      .catch(() => {
-        // fallback: use browser timezone
+
+        if (editId) {
+          // Load existing schedule values via the schedules list
+          const { getSchedules } = await import("@/lib/api");
+          const schedules = await getSchedules();
+          const existing = schedules.find((s) => s.id === editId);
+          if (existing) {
+            setSelectedDays(existing.daysOfWeek);
+            setTimeHHMM(existing.timeHHMM);
+          }
+        }
+      } catch {
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
         setTimezone(tz);
         setOriginalTimezone(tz);
-      });
-  }, []);
+      }
+    }
+    init();
+  }, [editId]);
 
   function toggleDay(day: number) {
     setSelectedDays((prev) =>
@@ -68,11 +83,14 @@ export default function OnboardingPage() {
     setError("");
     setLoading(true);
     try {
-      // Update timezone if changed
       if (timezone !== originalTimezone) {
         await updateMe({ timezone });
       }
-      await createSchedule({ daysOfWeek: selectedDays, timeHHMM });
+      if (editId) {
+        await updateSchedule(editId, { daysOfWeek: selectedDays, timeHHMM });
+      } else {
+        await createSchedule({ daysOfWeek: selectedDays, timeHHMM });
+      }
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save schedule");
@@ -86,7 +104,9 @@ export default function OnboardingPage() {
       <div className="max-w-md w-full space-y-6">
         <div className="text-center">
           <div className="text-4xl mb-3">📅</div>
-          <h1 className="text-2xl font-bold">Set your call schedule</h1>
+          <h1 className="text-2xl font-bold">
+            {editId ? "Edit schedule" : "Set your call schedule"}
+          </h1>
           <p className="text-gray-500 text-sm mt-1">
             We&apos;ll call you at this time to practice English
           </p>
@@ -150,19 +170,30 @@ export default function OnboardingPage() {
             </p>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
-            <strong>How it works:</strong> At the scheduled time, our AI coach
-            will call your phone for a 10–15 min English conversation. You&apos;ll
-            receive personalized feedback after each session.
-          </div>
+          {!editId && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+              <strong>How it works:</strong> At the scheduled time, our AI coach
+              will call your phone for a 10–15 min English conversation. You&apos;ll
+              receive personalized feedback after each session.
+            </div>
+          )}
 
-          <button
-            type="submit"
-            className="btn-primary w-full"
-            disabled={loading}
-          >
-            {loading ? "Saving..." : "Start my practice schedule"}
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="btn-secondary flex-1"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary flex-1"
+              disabled={loading}
+            >
+              {loading ? "Saving..." : editId ? "Save changes" : "Start my practice schedule"}
+            </button>
+          </div>
         </form>
       </div>
     </main>

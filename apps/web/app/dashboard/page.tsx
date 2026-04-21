@@ -166,12 +166,12 @@ export default function DashboardPage() {
                     >
                       {s.isActive ? "Active" : "Paused"}
                     </span>
-                    <button
-                      onClick={() => handleDeleteSchedule(s.id)}
-                      className="text-xs text-red-500 hover:text-red-700"
+                    <Link
+                      href={`/onboarding?edit=${s.id}`}
+                      className="text-xs text-blue-500 hover:text-blue-700"
                     >
-                      Delete
-                    </button>
+                      Edit
+                    </Link>
                   </div>
                 </div>
               ))}
