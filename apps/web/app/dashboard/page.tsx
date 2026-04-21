@@ -152,7 +152,9 @@ export default function DashboardPage() {
                     <div className="font-medium text-sm">
                       {s.daysOfWeek.map((d) => DAY_NAMES[d]).join(", ")}
                     </div>
-                    <div className="text-gray-500 text-sm">at {s.timeHHMM}</div>
+                    <div className="text-gray-500 text-sm">
+                      at {s.timeHHMM} <span className="text-xs text-gray-400">({user?.timezone})</span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span
@@ -164,12 +166,12 @@ export default function DashboardPage() {
                     >
                       {s.isActive ? "Active" : "Paused"}
                     </span>
-                    <button
-                      onClick={() => handleDeleteSchedule(s.id)}
-                      className="text-xs text-red-500 hover:text-red-700"
+                    <Link
+                      href={`/onboarding?edit=${s.id}`}
+                      className="text-xs text-blue-500 hover:text-blue-700"
                     >
-                      Delete
-                    </button>
+                      Edit
+                    </Link>
                   </div>
                 </div>
               ))}

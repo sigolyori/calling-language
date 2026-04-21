@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createSchedule } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getMe, updateMe, createSchedule, updateSchedule } from "@/lib/api";
 
 const DAYS = [
   { label: "Mon", value: 1 },
@@ -14,12 +14,59 @@ const DAYS = [
   { label: "Sun", value: 7 },
 ];
 
+const TIMEZONES = [
+  "Asia/Seoul",
+  "Asia/Tokyo",
+  "Asia/Shanghai",
+  "Asia/Singapore",
+  "Asia/Bangkok",
+  "Asia/Kolkata",
+  "Europe/London",
+  "Europe/Paris",
+  "America/New_York",
+  "America/Los_Angeles",
+  "America/Chicago",
+  "America/Sao_Paulo",
+  "Australia/Sydney",
+];
+
 export default function OnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit"); // present when editing an existing schedule
+
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]);
   const [timeHHMM, setTimeHHMM] = useState("09:00");
+  const [timezone, setTimezone] = useState("Asia/Seoul");
+  const [originalTimezone, setOriginalTimezone] = useState("Asia/Seoul");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const user = await getMe();
+        setTimezone(user.timezone);
+        setOriginalTimezone(user.timezone);
+
+        if (editId) {
+          // Load existing schedule values via the schedules list
+          const { getSchedules } = await import("@/lib/api");
+          const schedules = await getSchedules();
+          const existing = schedules.find((s) => s.id === editId);
+          if (existing) {
+            setSelectedDays(existing.daysOfWeek);
+            setTimeHHMM(existing.timeHHMM);
+          }
+        }
+      } catch {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        setTimezone(tz);
+        setOriginalTimezone(tz);
+      }
+    }
+    init();
+  }, [editId]);
 
   function toggleDay(day: number) {
     setSelectedDays((prev) =>
@@ -36,7 +83,14 @@ export default function OnboardingPage() {
     setError("");
     setLoading(true);
     try {
-      await createSchedule({ daysOfWeek: selectedDays, timeHHMM });
+      if (timezone !== originalTimezone) {
+        await updateMe({ timezone });
+      }
+      if (editId) {
+        await updateSchedule(editId, { daysOfWeek: selectedDays, timeHHMM });
+      } else {
+        await createSchedule({ daysOfWeek: selectedDays, timeHHMM });
+      }
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save schedule");
@@ -50,7 +104,9 @@ export default function OnboardingPage() {
       <div className="max-w-md w-full space-y-6">
         <div className="text-center">
           <div className="text-4xl mb-3">📅</div>
-          <h1 className="text-2xl font-bold">Set your call schedule</h1>
+          <h1 className="text-2xl font-bold">
+            {editId ? "Edit schedule" : "Set your call schedule"}
+          </h1>
           <p className="text-gray-500 text-sm mt-1">
             We&apos;ll call you at this time to practice English
           </p>
@@ -62,6 +118,22 @@ export default function OnboardingPage() {
               {error}
             </div>
           )}
+
+          <div>
+            <label className="label">My timezone</label>
+            <select
+              className="input"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+            >
+              {TIMEZONES.map((tz) => (
+                <option key={tz} value={tz}>{tz}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              All schedule times below are in this timezone.
+            </p>
+          </div>
 
           <div>
             <label className="label">Practice days</label>
@@ -94,24 +166,34 @@ export default function OnboardingPage() {
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              UTC 기준 시간으로 입력하세요. 한국(KST)은 UTC+9 입니다.
-              예) 오전 9시 KST → 00:00 UTC, 오후 9시 KST → 12:00 UTC
+              The AI coach will call you at this time ({timezone}).
             </p>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
-            <strong>How it works:</strong> At the scheduled time, our AI coach
-            will call your phone for a 10–15 min English conversation. You&apos;ll
-            receive personalized feedback after each session.
-          </div>
+          {!editId && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+              <strong>How it works:</strong> At the scheduled time, our AI coach
+              will call your phone for a 10–15 min English conversation. You&apos;ll
+              receive personalized feedback after each session.
+            </div>
+          )}
 
-          <button
-            type="submit"
-            className="btn-primary w-full"
-            disabled={loading}
-          >
-            {loading ? "Saving..." : "Start my practice schedule"}
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="btn-secondary flex-1"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary flex-1"
+              disabled={loading}
+            >
+              {loading ? "Saving..." : editId ? "Save changes" : "Start my practice schedule"}
+            </button>
+          </div>
         </form>
       </div>
     </main>
