@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/server/prisma";
 import { triggerOutboundCall } from "@/lib/server/vapi";
 
-// Vercel Cron calls this endpoint every minute.
-// It checks which schedules match the current UTC day+time and triggers calls.
 export async function GET(req: NextRequest) {
-  // Verify cron secret (Vercel sends this automatically for cron jobs)
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
@@ -13,22 +10,46 @@ export async function GET(req: NextRequest) {
   }
 
   const now = new Date();
-  const currentDay = now.getUTCDay() === 0 ? 7 : now.getUTCDay(); // ISO: Mon=1..Sun=7
-  const currentHHMM = `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}`;
 
-  const schedules = await prisma.schedule.findMany({
-    where: { isActive: true, timeHHMM: currentHHMM, daysOfWeek: { has: currentDay } },
+  // Load all active schedules and match against each user's local time
+  const allSchedules = await prisma.schedule.findMany({
+    where: { isActive: true },
     include: { user: true },
   });
 
+  const matching = allSchedules.filter((schedule) => {
+    const tz = schedule.user.timezone;
+    const localNow = new Date(now.toLocaleString("en-US", { timeZone: tz }));
+    const localDay = localNow.getDay() === 0 ? 7 : localNow.getDay(); // Mon=1..Sun=7
+    const localHHMM = `${String(localNow.getHours()).padStart(2, "0")}:${String(localNow.getMinutes()).padStart(2, "0")}`;
+    return schedule.daysOfWeek.includes(localDay) && schedule.timeHHMM === localHHMM;
+  });
+
   const results: { userId: string; status: string }[] = [];
-  for (const schedule of schedules) {
+
+  for (const schedule of matching) {
+    // Duplicate prevention: skip if a non-failed session was created in the last 10 minutes
+    const recent = await prisma.session.findFirst({
+      where: {
+        scheduleId: schedule.id,
+        status: { not: "failed" },
+        createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) },
+      },
+    });
+    if (recent) {
+      results.push({ userId: schedule.userId, status: "skipped_duplicate" });
+      continue;
+    }
+
     try {
       const session = await prisma.session.create({
         data: { userId: schedule.userId, scheduleId: schedule.id, status: "scheduled" },
       });
       const callId = await triggerOutboundCall(schedule.user.phoneNumber, session.id);
-      await prisma.session.update({ where: { id: session.id }, data: { vapiCallId: callId, status: "in_progress" } });
+      await prisma.session.update({
+        where: { id: session.id },
+        data: { vapiCallId: callId, status: "in_progress" },
+      });
       results.push({ userId: schedule.userId, status: "called" });
     } catch (err) {
       console.error(`[Cron] Failed for user ${schedule.userId}:`, err);
@@ -36,5 +57,6 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ time: currentHHMM, day: currentDay, triggered: results.length, results });
+  const localTime = now.toISOString();
+  return NextResponse.json({ time: localTime, checked: allSchedules.length, triggered: results.filter(r => r.status === "called").length, results });
 }

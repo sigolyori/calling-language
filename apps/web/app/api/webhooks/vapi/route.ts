@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/server/prisma";
 import { verifyVapiWebhook } from "@/lib/server/vapi";
-import { generateFeedback } from "@/lib/server/feedback";
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -16,7 +15,10 @@ export async function POST(req: NextRequest) {
   if (type === "call-started") {
     const vapiCallId = payload.message.call?.id;
     if (vapiCallId) {
-      await prisma.session.updateMany({ where: { vapiCallId }, data: { status: "in_progress", startedAt: new Date() } });
+      await prisma.session.updateMany({
+        where: { vapiCallId },
+        data: { status: "in_progress", startedAt: new Date() },
+      });
     }
   } else if (type === "end-of-call-report" || type === "call-ended") {
     const vapiCallId = payload.message.call?.id;
@@ -25,21 +27,29 @@ export async function POST(req: NextRequest) {
     const durationSecs = payload.message.durationSeconds ?? null;
     const endedReason = payload.message.endedReason ?? "unknown";
 
-    const status = (endedReason === "assistant-ended-call" || endedReason === "customer-ended-call") ? "completed" : "failed";
+    const status =
+      endedReason === "assistant-ended-call" || endedReason === "customer-ended-call"
+        ? "completed"
+        : "failed";
 
     const transcriptContent = messages.map((m: { role: string; message: string; time: number }) => ({
-      role: m.role, text: m.message, timestamp: m.time,
+      role: m.role,
+      text: m.message,
+      timestamp: m.time,
     }));
-    const rawText = messages.map((m: { role: string; message: string }) =>
-      `${m.role === "assistant" ? "AI" : "User"}: ${m.message}`
-    ).join("\n");
+    const rawText = messages
+      .map((m: { role: string; message: string }) => `${m.role === "assistant" ? "AI" : "User"}: ${m.message}`)
+      .join("\n");
 
-    await prisma.session.updateMany({ where: { vapiCallId }, data: { status, endedAt: new Date(), durationSecs } });
+    await prisma.session.updateMany({
+      where: { vapiCallId },
+      data: { status, endedAt: new Date(), durationSecs },
+    });
 
     const sessionId = metadata?.sessionId;
     const session = sessionId
       ? await prisma.session.findUnique({ where: { id: sessionId } })
-      : await prisma.session.findUnique({ where: { vapiCallId } });
+      : await prisma.session.findFirst({ where: { vapiCallId } });
 
     if (session && rawText.trim()) {
       await prisma.transcript.upsert({
@@ -47,7 +57,16 @@ export async function POST(req: NextRequest) {
         create: { sessionId: session.id, content: transcriptContent, rawText },
         update: { content: transcriptContent, rawText },
       });
-      generateFeedback(session.id).catch(err => console.error(`Feedback failed:`, err));
+
+      // Trigger feedback in a separate serverless invocation to avoid this
+      // webhook's 10s timeout — fire-and-forget is intentional here.
+      const baseUrl = process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000";
+      fetch(`${baseUrl}/api/feedback/${session.id}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${process.env.CRON_SECRET ?? ""}` },
+      }).catch((err) => console.error("[Webhook] Failed to trigger feedback:", err));
     }
   }
 
