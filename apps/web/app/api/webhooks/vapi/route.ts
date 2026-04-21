@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/server/prisma";
 import { verifyVapiWebhook } from "@/lib/server/vapi";
+import { generateFeedback } from "@/lib/server/feedback";
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -65,15 +66,11 @@ export async function POST(req: NextRequest) {
         update: { content: transcriptContent, rawText },
       });
 
-      // Trigger feedback in a separate serverless invocation to avoid this
-      // webhook's 10s timeout — fire-and-forget is intentional here.
-      const baseUrl = process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost:3000";
-      fetch(`${baseUrl}/api/feedback/${session.id}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${process.env.CRON_SECRET ?? ""}` },
-      }).catch((err) => console.error("[Webhook] Failed to trigger feedback:", err));
+      // Generate feedback directly — Vapi webhook timeout is generous (~30s)
+      // and Claude typically responds within 5s, so awaiting is safe and reliable.
+      await generateFeedback(session.id).catch((err) =>
+        console.error("[Webhook] Feedback generation failed:", err)
+      );
     }
   }
 
