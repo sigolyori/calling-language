@@ -172,6 +172,12 @@ export default function DashboardPage() {
                     >
                       Edit
                     </Link>
+                    <button
+                      onClick={() => handleDeleteSchedule(s.id)}
+                      className="text-xs text-red-500 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               ))}
