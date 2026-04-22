@@ -94,12 +94,12 @@ export function buildFirstMessage(profile: LearnerProfileJson | null): string {
 
   if (thread) {
     const greeting = name ? `Hi ${name}!` : "Hi!";
-    return `${greeting} It's Riley. Last time we left off on ${thread} — I've been curious how that's been going. Want to pick up there?`;
+    return `${greeting} It's Alex. Last time we left off on ${thread} — I've been curious how that's been going. Want to pick up there?`;
   }
   if (name) {
-    return `Hi ${name}! It's Riley — how's your day been so far?`;
+    return `Hi ${name}! It's Alex — how's your day been so far?`;
   }
-  return "Hi there! This is Riley, your English conversation coach. It's great to connect — how's your day going so far?";
+  return "Hi there! This is Alex, your English conversation coach. It's great to connect — how's your day going so far?";
 }
 
 export interface AssistantOverrides {
