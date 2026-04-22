@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/server/prisma";
 import { triggerOutboundCall } from "@/lib/server/vapi";
+import { prepareAssistantOverrides } from "@/lib/server/call-prep";
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -45,7 +46,8 @@ export async function GET(req: NextRequest) {
       const session = await prisma.session.create({
         data: { userId: schedule.userId, scheduleId: schedule.id, status: "scheduled" },
       });
-      const callId = await triggerOutboundCall(schedule.user.phoneNumber, session.id);
+      const overrides = await prepareAssistantOverrides(schedule.userId, session.id);
+      const callId = await triggerOutboundCall(schedule.user.phoneNumber, session.id, overrides);
       await prisma.session.update({
         where: { id: session.id },
         data: { vapiCallId: callId, status: "in_progress" },

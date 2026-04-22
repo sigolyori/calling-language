@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/server/prisma";
 import { getUserId, unauthorized } from "@/lib/server/auth";
 import { triggerOutboundCall } from "@/lib/server/vapi";
+import { prepareAssistantOverrides } from "@/lib/server/call-prep";
 
 export async function POST(req: NextRequest) {
   const uid = getUserId(req);
@@ -16,7 +17,8 @@ export async function POST(req: NextRequest) {
   });
 
   try {
-    const callId = await triggerOutboundCall(user.phoneNumber, session.id);
+    const overrides = await prepareAssistantOverrides(uid, session.id);
+    const callId = await triggerOutboundCall(user.phoneNumber, session.id, overrides);
     await prisma.session.update({ where: { id: session.id }, data: { vapiCallId: callId, status: "in_progress" } });
     return NextResponse.json({ ok: true, sessionId: session.id, vapiCallId: callId, callingNumber: user.phoneNumber });
   } catch (err) {
