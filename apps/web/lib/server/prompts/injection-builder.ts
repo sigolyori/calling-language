@@ -1,6 +1,6 @@
 import type { LearnerProfileJson } from "../profiles";
 import type { DailyBriefingJson } from "../briefings";
-import { ALEX_BASE } from "./alex-base";
+import { ALEX_BASE, ALEX_MODEL, ALEX_MODEL_PROVIDER } from "./alex-base";
 
 function renderMemorySection(profile: LearnerProfileJson): string {
   const { learner_profile: core, speaking_patterns: sp, session_history, open_threads, excluded_topics } = profile;
@@ -104,7 +104,11 @@ export function buildFirstMessage(profile: LearnerProfileJson | null): string {
 
 export interface AssistantOverrides {
   metadata?: Record<string, unknown>;
-  model?: { messages: { role: "system"; content: string }[] };
+  model?: {
+    provider: string;
+    model: string;
+    messages: { role: "system"; content: string }[];
+  };
   firstMessage?: string;
 }
 
@@ -126,7 +130,11 @@ export function buildAssistantOverrides(args: {
   };
 
   if (systemPrompt) {
-    overrides.model = { messages: [{ role: "system", content: systemPrompt }] };
+    overrides.model = {
+      provider: ALEX_MODEL_PROVIDER,
+      model: ALEX_MODEL,
+      messages: [{ role: "system", content: systemPrompt }],
+    };
   }
 
   return overrides;

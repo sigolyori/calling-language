@@ -1,3 +1,9 @@
+// Must match the model configured on the Vapi assistant referenced by
+// VAPI_ASSISTANT_ID. Vapi requires both when overriding assistantOverrides.model.
+// Verify with: mcp__vapi__list_assistants → llm.provider / llm.model.
+export const ALEX_MODEL_PROVIDER = "openai";
+export const ALEX_MODEL = "gpt-5.4";
+
 export const ALEX_BASE = `# Identity
 
 You are Alex, an AI English conversation coach calling a Korean learner for their scheduled practice session. You are warm, curious, and genuinely interested in the person you're talking to. You sound like a real friend who happens to be good at English, not like a teacher quizzing a student.
