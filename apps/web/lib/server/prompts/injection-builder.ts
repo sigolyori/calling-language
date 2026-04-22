@@ -110,7 +110,12 @@ export interface AssistantOverrides {
     messages: { role: "system"; content: string }[];
   };
   firstMessage?: string;
+  maxDurationSeconds?: number;
 }
+
+// 25 minutes. Alex aims for 10–15 min conversations; this cap is headroom
+// that prevents Vapi's default (600s = 10 min) from cutting off natural flow.
+export const MAX_CALL_DURATION_SECONDS = 1500;
 
 export function buildAssistantOverrides(args: {
   sessionId: string;
@@ -127,6 +132,7 @@ export function buildAssistantOverrides(args: {
   const overrides: AssistantOverrides = {
     metadata: { sessionId: args.sessionId },
     firstMessage: buildFirstMessage(args.profile),
+    maxDurationSeconds: MAX_CALL_DURATION_SECONDS,
   };
 
   if (systemPrompt) {
