@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/server/env";
 import { generateAndStoreBriefing } from "@/lib/server/briefings";
 
+export const maxDuration = 60;
+
 async function handle(req: NextRequest) {
   const t0 = Date.now();
   const auth = req.headers.get("authorization");
