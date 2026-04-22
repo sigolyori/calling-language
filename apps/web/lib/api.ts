@@ -90,6 +90,44 @@ export async function updateMe(data: Partial<Pick<User, "name" | "phoneNumber" |
   return request("/api/users/me", { method: "PATCH", body: JSON.stringify(data) });
 }
 
+// --- Learner profile (cross-call memory) ---
+export interface LearnerProfileResponse {
+  profile: {
+    learner_profile: {
+      name: string;
+      level: "beginner" | "intermediate" | "advanced";
+      english_level_notes: string;
+      occupation: string;
+      location: string;
+      interests: string[];
+      recurring_topics: string[];
+      language_goals: string;
+    };
+    speaking_patterns: {
+      common_errors: string[];
+      improvement_areas: string[];
+      strengths: string[];
+      filler_words: string[];
+    };
+    session_history: {
+      date: string;
+      duration_min: number;
+      topics_discussed: string[];
+      key_moments: string[];
+      follow_up_hooks: string[];
+      corrections_given: string[];
+    }[];
+    open_threads: string[];
+    excluded_topics: string[];
+  } | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export async function getMyProfile(): Promise<LearnerProfileResponse> {
+  return request("/api/users/me/profile");
+}
+
 // --- Schedules ---
 export interface Schedule {
   id: string;
