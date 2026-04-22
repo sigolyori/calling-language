@@ -1,7 +1,6 @@
-import { Anthropic } from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { env } from "./env";
 import { prisma } from "./prisma";
+import { getAnthropic, SONNET_MODEL } from "./anthropic";
 
 const feedbackSchema = z.object({
   fluencyScore: z.number().int().min(1).max(5),
@@ -42,7 +41,8 @@ export async function generateFeedback(sessionId: string) {
     return;
   }
 
-  if (!env.ANTHROPIC_API_KEY) {
+  const client = getAnthropic();
+  if (!client) {
     console.log(`[Feedback STUB] session ${sessionId}`);
     await prisma.feedback.create({
       data: {
@@ -55,9 +55,8 @@ export async function generateFeedback(sessionId: string) {
     return;
   }
 
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
   const msg = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: SONNET_MODEL,
     max_tokens: 1024,
     system: SYSTEM,
     messages: [{ role: "user", content: buildPrompt(session.transcript.rawText, session.user.englishLevel) }],

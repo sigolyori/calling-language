@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/server/prisma";
 import { verifyVapiWebhook } from "@/lib/server/vapi";
 import { generateFeedback } from "@/lib/server/feedback";
+import { extractAndUpsertProfile } from "@/lib/server/profiles";
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -66,11 +67,18 @@ export async function POST(req: NextRequest) {
         update: { content: transcriptContent, rawText },
       });
 
-      // Generate feedback directly — Vapi webhook timeout is generous (~30s)
-      // and Claude typically responds within 5s, so awaiting is safe and reliable.
-      await generateFeedback(session.id).catch((err) =>
-        console.error("[Webhook] Feedback generation failed:", err)
-      );
+      // Feedback (Sonnet) and profile extraction (Haiku) run in parallel — both
+      // read the same transcript and neither depends on the other. Vapi's webhook
+      // timeout (~30s) is generous; each Claude call typically returns in <5s.
+      // Failures are isolated per-task so one doesn't take down the other.
+      await Promise.all([
+        generateFeedback(session.id).catch((err) =>
+          console.error("[Webhook] Feedback generation failed:", err),
+        ),
+        extractAndUpsertProfile(session.id).catch((err) =>
+          console.error("[Webhook] Profile extraction failed:", err),
+        ),
+      ]);
     }
   }
 
