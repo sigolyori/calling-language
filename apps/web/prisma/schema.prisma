@@ -8,17 +8,18 @@ datasource db {
 }
 
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  passwordHash String
-  name         String
-  phoneNumber  String
-  englishLevel String     // "beginner" | "intermediate"
-  timezone     String     // IANA e.g. "Asia/Seoul"
-  createdAt    DateTime   @default(now())
-  schedules    Schedule[]
-  sessions     Session[]
-  feedbacks    Feedback[]
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String
+  name           String
+  phoneNumber    String
+  englishLevel   String          // "beginner" | "intermediate"
+  timezone       String          // IANA e.g. "Asia/Seoul"
+  createdAt      DateTime        @default(now())
+  schedules      Schedule[]
+  sessions       Session[]
+  feedbacks      Feedback[]
+  learnerProfile LearnerProfile?
 }
 
 model Schedule {
@@ -71,4 +72,26 @@ model Feedback {
   specificExamples Json     // [{original, corrected, note}]
   overallSummary   String   @db.Text
   createdAt        DateTime @default(now())
+}
+
+model LearnerProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  learnerProfile   Json     // { name, level, english_level_notes, occupation, location, interests[], recurring_topics[], language_goals }
+  speakingPatterns Json     // { common_errors[], improvement_areas[], strengths[], filler_words[] }
+  sessionHistory   Json     // SessionEntry[] — cap 10 FIFO
+  openThreads      Json     // string[] — cap 5 FIFO
+  excludedTopics   Json     // string[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model DailyBriefing {
+  id                   String   @id @default(cuid())
+  date                 String   @unique // YYYY-MM-DD (KST)
+  weatherSeoul         String
+  items                Json     // BriefingItem[] { category, headline, context, why_relevant }
+  conversationStarters Json     // string[]
+  generatedAt          DateTime @default(now())
 }

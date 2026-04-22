@@ -13,4 +13,5 @@ export const env = {
   VAPI_WEBHOOK_SECRET: process.env.VAPI_WEBHOOK_SECRET ?? "",
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
   CRON_SECRET: process.env.CRON_SECRET ?? "",
+  TAVILY_API_KEY: process.env.TAVILY_API_KEY ?? "",
 };
