@@ -96,6 +96,12 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500">{user?.name}</span>
+            <Link
+              href="/settings/password"
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Settings
+            </Link>
             <button
               onClick={handleLogout}
               className="text-sm text-gray-500 hover:text-gray-700"

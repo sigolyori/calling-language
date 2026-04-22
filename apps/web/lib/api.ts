@@ -61,6 +61,16 @@ export async function login(data: {
   });
 }
 
+export async function changePassword(data: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<{ ok: true }> {
+  return request("/api/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // --- User ---
 export interface User {
   id: string;
