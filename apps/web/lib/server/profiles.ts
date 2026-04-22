@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { prisma } from "./prisma";
-import { getAnthropic, HAIKU_MODEL } from "./anthropic";
+import { getAnthropic, HAIKU_MODEL, stripJsonFences } from "./anthropic";
 import { PROFILE_EXTRACTOR_SYSTEM, buildProfileExtractorUserPrompt } from "./prompts/profile-extractor";
 
 export interface LearnerProfileCore {
@@ -78,12 +78,6 @@ function applyCaps(p: LearnerProfileJson): LearnerProfileJson {
     session_history: p.session_history.slice(-MAX_SESSIONS),
     open_threads: p.open_threads.slice(-MAX_OPEN_THREADS),
   };
-}
-
-function stripJsonFences(text: string): string {
-  const trimmed = text.trim();
-  const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
-  return fenceMatch ? fenceMatch[1].trim() : trimmed;
 }
 
 export async function loadProfile(userId: string): Promise<LearnerProfileJson | null> {

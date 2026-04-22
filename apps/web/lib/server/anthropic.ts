@@ -11,3 +11,9 @@ export function getAnthropic(): Anthropic | null {
 
 export const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 export const SONNET_MODEL = "claude-sonnet-4-6";
+
+export function stripJsonFences(text: string): string {
+  const trimmed = text.trim();
+  const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+  return fenceMatch ? fenceMatch[1].trim() : trimmed;
+}
