@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { SessionSummary } from "@/lib/api";
-import { ScoreBadge } from "./ScoreBadge";
 
 const STATUS_STYLES: Record<string, string> = {
   completed: "bg-green-100 text-green-700",
@@ -58,10 +57,9 @@ export function SessionCard({ session }: { session: SessionSummary }) {
           </div>
 
           {session.feedback && (
-            <div className="flex gap-3 shrink-0">
-              <ScoreBadge label="Fluency" score={session.feedback.fluencyScore} />
-              <ScoreBadge label="Vocab" score={session.feedback.vocabularyScore} />
-              <ScoreBadge label="Grammar" score={session.feedback.grammarScore} />
+            <div className="shrink-0 text-right">
+              <div className="text-[10px] text-gray-400 uppercase tracking-wide">OPIc</div>
+              <div className="text-lg font-bold text-gray-900">{session.feedback.opicLevel}</div>
             </div>
           )}
         </div>

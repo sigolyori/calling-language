@@ -9,7 +9,7 @@ import {
   type SessionDetail,
   type TranscriptData,
 } from "@/lib/api";
-import { ScoreBadge } from "@/components/ScoreBadge";
+import { OpicGaugeBar } from "@/components/OpicGaugeBar";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -114,13 +114,13 @@ export default function SessionDetailPage() {
         {/* Feedback */}
         {fb ? (
           <>
-            {/* Scores */}
+            {/* OPIc level gauge */}
             <div className="card">
-              <h2 className="font-semibold mb-4">Scores</h2>
-              <div className="flex justify-around">
-                <ScoreBadge label="Fluency" score={fb.fluencyScore} />
-                <ScoreBadge label="Vocabulary" score={fb.vocabularyScore} />
-                <ScoreBadge label="Grammar" score={fb.grammarScore} />
+              <h2 className="font-semibold mb-4">OPIc 수준</h2>
+              <OpicGaugeBar level={fb.opicLevel} />
+              <div className="mt-6 pt-4 border-t border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-800 mb-1">평가 근거</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">{fb.opicRationale}</p>
               </div>
             </div>
 
@@ -174,7 +174,13 @@ export default function SessionDetailPage() {
           </>
         ) : (
           <div className="card text-center text-gray-500 py-8">
-            {session.status === "completed" ? (
+            {session.feedbackUnavailableReason === "no_api_key" ? (
+              <>
+                <div className="text-3xl mb-2">🔑</div>
+                <p className="font-medium text-gray-700">평가를 생성할 수 없습니다</p>
+                <p className="text-sm mt-1">ANTHROPIC_API_KEY가 설정되지 않아 평가가 생성되지 않았습니다.</p>
+              </>
+            ) : session.status === "completed" ? (
               <>
                 <div className="text-3xl mb-2">⏳</div>
                 <p>Feedback is being generated. Check back in a minute.</p>

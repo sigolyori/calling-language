@@ -64,9 +64,8 @@ model Feedback {
   session          Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   userId           String
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fluencyScore     Int      // 1-5
-  vocabularyScore  Int      // 1-5
-  grammarScore     Int      // 1-5
+  opicLevel        String   // OPIc: NL, NM, NH, IL, IM1, IM2, IM3, IH, AL, AM, AH, Superior
+  opicRationale    String   @db.Text
   strengths        String   @db.Text
   improvements     String   @db.Text
   specificExamples Json     // [{original, corrected, note}]

@@ -1,32 +1,22 @@
 import { z } from "zod";
 import { prisma } from "./prisma";
-import { getAnthropic, SONNET_MODEL } from "./anthropic";
+import { getAnthropic, SONNET_MODEL, stripJsonFences } from "./anthropic";
+import {
+  OPIC_EVALUATOR_SYSTEM,
+  OPIC_LEVELS,
+  buildOpicEvaluatorUserPrompt,
+} from "./prompts/opic-evaluator";
 
 const feedbackSchema = z.object({
-  fluencyScore: z.number().int().min(1).max(5),
-  vocabularyScore: z.number().int().min(1).max(5),
-  grammarScore: z.number().int().min(1).max(5),
+  opicLevel: z.enum(OPIC_LEVELS),
+  opicRationale: z.string(),
   strengths: z.string(),
   improvements: z.string(),
-  specificExamples: z.array(z.object({ original: z.string(), corrected: z.string(), note: z.string() })),
+  specificExamples: z.array(
+    z.object({ original: z.string(), corrected: z.string(), note: z.string() }),
+  ),
   overallSummary: z.string(),
 });
-
-const SYSTEM = `You are an expert English language coach analyzing a conversation transcript.
-Provide constructive, encouraging feedback. Always respond with valid JSON matching the specified schema exactly.
-Be specific, reference actual examples from the transcript, and keep feedback actionable.`;
-
-function buildPrompt(rawText: string, level: string) {
-  return `Analyze this English speaking session for a ${level} learner.
-
-TRANSCRIPT:
-${rawText}
-
-Respond as JSON:
-{"fluencyScore":<1-5>,"vocabularyScore":<1-5>,"grammarScore":<1-5>,"strengths":"...","improvements":"...","specificExamples":[{"original":"...","corrected":"...","note":"..."}],"overallSummary":"..."}
-
-Include 2-4 specificExamples. JSON only, no markdown.`;
-}
 
 export async function generateFeedback(sessionId: string) {
   const session = await prisma.session.findUnique({
@@ -35,7 +25,7 @@ export async function generateFeedback(sessionId: string) {
   });
   if (!session?.transcript) return;
 
-  const words = session.transcript.rawText.split(/\s+/).length;
+  const words = session.transcript.rawText.trim().split(/\s+/).filter(Boolean).length;
   if (words < 30) {
     console.log(`[Feedback] Too short (${words} words), skipping ${sessionId}`);
     return;
@@ -43,40 +33,46 @@ export async function generateFeedback(sessionId: string) {
 
   const client = getAnthropic();
   if (!client) {
-    console.log(`[Feedback STUB] session ${sessionId}`);
-    await prisma.feedback.create({
-      data: {
-        sessionId, userId: session.userId,
-        fluencyScore: 3, vocabularyScore: 3, grammarScore: 3,
-        strengths: "Good attempt (stub)", improvements: "Keep practicing",
-        specificExamples: [], overallSummary: "Stub feedback — no API key configured.",
-      },
-    });
+    console.log(`[Feedback] No ANTHROPIC_API_KEY — skipping ${sessionId}`);
     return;
   }
 
   const msg = await client.messages.create({
     model: SONNET_MODEL,
-    max_tokens: 1024,
-    system: SYSTEM,
-    messages: [{ role: "user", content: buildPrompt(session.transcript.rawText, session.user.englishLevel) }],
+    max_tokens: 1500,
+    temperature: 0.2,
+    system: OPIC_EVALUATOR_SYSTEM,
+    messages: [
+      {
+        role: "user",
+        content: buildOpicEvaluatorUserPrompt({
+          rawTranscript: session.transcript.rawText,
+          selfReportedLevel: session.user.englishLevel,
+        }),
+      },
+    ],
   });
 
-  const content = msg.content[0];
-  if (content.type !== "text") throw new Error("Unexpected response type");
+  console.log(
+    `[Feedback tokens] session=${sessionId} input=${msg.usage.input_tokens} output=${msg.usage.output_tokens}`,
+  );
 
-  const parsed = feedbackSchema.parse(JSON.parse(content.text));
+  const content = msg.content[0];
+  if (content.type !== "text") throw new Error("[Feedback] Unexpected response type");
+
+  const cleaned = stripJsonFences(content.text);
+  const parsed = feedbackSchema.parse(JSON.parse(cleaned));
   await prisma.feedback.create({
     data: {
-      sessionId, userId: session.userId,
-      fluencyScore: parsed.fluencyScore,
-      vocabularyScore: parsed.vocabularyScore,
-      grammarScore: parsed.grammarScore,
+      sessionId,
+      userId: session.userId,
+      opicLevel: parsed.opicLevel,
+      opicRationale: parsed.opicRationale,
       strengths: parsed.strengths,
       improvements: parsed.improvements,
       specificExamples: parsed.specificExamples,
       overallSummary: parsed.overallSummary,
     },
   });
-  console.log(`[Feedback] Generated for session ${sessionId}`);
+  console.log(`[Feedback] Generated for session ${sessionId} — level=${parsed.opicLevel}`);
 }

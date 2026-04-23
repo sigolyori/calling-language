@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const [sessions, total] = await Promise.all([
     prisma.session.findMany({
       where: { userId: uid }, orderBy: { createdAt: "desc" }, skip, take: limit,
-      include: { feedback: { select: { fluencyScore: true, vocabularyScore: true, grammarScore: true, overallSummary: true } } },
+      include: { feedback: { select: { opicLevel: true, overallSummary: true } } },
     }),
     prisma.session.count({ where: { userId: uid } }),
   ]);

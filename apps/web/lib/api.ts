@@ -167,6 +167,20 @@ export async function deleteSchedule(id: string): Promise<void> {
 }
 
 // --- Sessions ---
+export type OpicLevel =
+  | "NL"
+  | "NM"
+  | "NH"
+  | "IL"
+  | "IM1"
+  | "IM2"
+  | "IM3"
+  | "IH"
+  | "AL"
+  | "AM"
+  | "AH"
+  | "Superior";
+
 export interface SessionSummary {
   id: string;
   status: string;
@@ -175,9 +189,7 @@ export interface SessionSummary {
   durationSecs: number | null;
   createdAt: string;
   feedback: {
-    fluencyScore: number;
-    vocabularyScore: number;
-    grammarScore: number;
+    opicLevel: OpicLevel;
     overallSummary: string;
   } | null;
 }
@@ -185,13 +197,13 @@ export interface SessionSummary {
 export interface SessionDetail extends SessionSummary {
   feedback: Feedback | null;
   transcript: { id: string; createdAt: string } | null;
+  feedbackUnavailableReason: "no_api_key" | null;
 }
 
 export interface Feedback {
   id: string;
-  fluencyScore: number;
-  vocabularyScore: number;
-  grammarScore: number;
+  opicLevel: OpicLevel;
+  opicRationale: string;
   strengths: string;
   improvements: string;
   specificExamples: { original: string; corrected: string; note: string }[];
