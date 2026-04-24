@@ -7,7 +7,12 @@
   ],
   "scripts": {
     "dev": "pnpm --parallel --filter './apps/*' dev",
+    "dev:web": "npm run start --workspace=apps/web",
+    "dev:mobile": "npm run start --workspace=apps/mobile",
     "build": "pnpm --filter './apps/*' build",
     "lint": "pnpm --filter './apps/*' lint"
+  },
+  "overrides": {
+    "@types/react": "19.1.17"
   }
 }
