@@ -48,6 +48,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "58e3c9f9-a516-4274-a791-ca4ce05348ab"
+      }
+    },
+    "owner": "sigolyori"
   }
 }
