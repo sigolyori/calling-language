@@ -10,5 +10,11 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "overrides": {
+    "@react-native-async-storage/async-storage": "2.2.0"
+  },
+  "devDependencies": {
+    "semver": "^7.7.4"
   }
 }
