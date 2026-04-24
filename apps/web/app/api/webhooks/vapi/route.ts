@@ -67,10 +67,10 @@ export async function POST(req: NextRequest) {
         update: { content: transcriptContent, rawText },
       });
 
-      // Feedback (Sonnet) and profile extraction (Haiku) run in parallel — both
-      // read the same transcript and neither depends on the other. Vapi's webhook
-      // timeout (~30s) is generous; each Claude call typically returns in <5s.
-      // Failures are isolated per-task so one doesn't take down the other.
+      // Feedback (Sonnet) and profile extraction (Haiku) run in parallel.
+      // generateFeedback persists its own failure reason onto Session.feedbackError
+      // before re-throwing, so the UI can surface it and offer a retry. The
+      // .catch() here just prevents one task from sinking the other.
       await Promise.all([
         generateFeedback(session.id).catch((err) =>
           console.error("[Webhook] Feedback generation failed:", err),

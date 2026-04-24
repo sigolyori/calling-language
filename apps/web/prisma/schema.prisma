@@ -44,6 +44,7 @@ model Session {
   startedAt    DateTime?
   endedAt      DateTime?
   durationSecs Int?
+  feedbackError String?    // null = ok/pending; "transcript_too_short" | error message when generation failed
   createdAt    DateTime    @default(now())
   transcript   Transcript?
   feedback     Feedback?

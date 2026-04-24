@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import {
   getSession,
   getTranscript,
+  retryFeedback,
   type SessionDetail,
   type TranscriptData,
 } from "@/lib/api";
@@ -35,6 +36,8 @@ export default function SessionDetailPage() {
   const [transcript, setTranscript] = useState<TranscriptData | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -51,6 +54,20 @@ export default function SessionDetailPage() {
     }
     load();
   }, [id]);
+
+  async function handleRetry() {
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      await retryFeedback(id);
+      const s = await getSession(id);
+      setSession(s);
+    } catch (err) {
+      setRetryError(err instanceof Error ? err.message : "재시도 실패");
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -174,16 +191,52 @@ export default function SessionDetailPage() {
           </>
         ) : (
           <div className="card text-center text-gray-500 py-8">
-            {session.feedbackUnavailableReason === "no_api_key" ? (
+            {session.feedbackStatus === "no_api_key" ? (
               <>
                 <div className="text-3xl mb-2">🔑</div>
                 <p className="font-medium text-gray-700">평가를 생성할 수 없습니다</p>
                 <p className="text-sm mt-1">ANTHROPIC_API_KEY가 설정되지 않아 평가가 생성되지 않았습니다.</p>
               </>
-            ) : session.status === "completed" ? (
+            ) : session.feedbackStatus === "too_short" ? (
+              <>
+                <div className="text-3xl mb-2">🗒️</div>
+                <p className="font-medium text-gray-700">평가를 생성할 수 없습니다</p>
+                <p className="text-sm mt-1">통화가 너무 짧아서(30 단어 미만) 평가를 생성하지 않았습니다.</p>
+              </>
+            ) : session.feedbackStatus === "failed" ? (
+              <>
+                <div className="text-3xl mb-2">⚠️</div>
+                <p className="font-medium text-gray-700">평가 생성에 실패했습니다</p>
+                {session.feedbackError && (
+                  <p className="text-xs text-gray-500 mt-1 font-mono break-all px-4">
+                    {session.feedbackError}
+                  </p>
+                )}
+                <button
+                  onClick={handleRetry}
+                  disabled={retrying}
+                  className="mt-4 px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
+                >
+                  {retrying ? "재시도 중..." : "재시도"}
+                </button>
+                {retryError && (
+                  <p className="text-xs text-red-600 mt-2">{retryError}</p>
+                )}
+              </>
+            ) : session.feedbackStatus === "pending" ? (
               <>
                 <div className="text-3xl mb-2">⏳</div>
                 <p>Feedback is being generated. Check back in a minute.</p>
+                <button
+                  onClick={handleRetry}
+                  disabled={retrying}
+                  className="mt-4 px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {retrying ? "생성 중..." : "지금 생성"}
+                </button>
+                {retryError && (
+                  <p className="text-xs text-red-600 mt-2">{retryError}</p>
+                )}
               </>
             ) : (
               <>

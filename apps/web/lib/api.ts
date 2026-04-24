@@ -194,10 +194,19 @@ export interface SessionSummary {
   } | null;
 }
 
+export type FeedbackStatus =
+  | "success"
+  | "pending"
+  | "failed"
+  | "too_short"
+  | "no_api_key"
+  | null;
+
 export interface SessionDetail extends SessionSummary {
   feedback: Feedback | null;
   transcript: { id: string; createdAt: string } | null;
-  feedbackUnavailableReason: "no_api_key" | null;
+  feedbackStatus: FeedbackStatus;
+  feedbackError: string | null;
 }
 
 export interface Feedback {
@@ -242,6 +251,12 @@ export async function getTranscript(sessionId: string): Promise<TranscriptData> 
 
 export async function getFeedback(sessionId: string): Promise<Feedback> {
   return request(`/api/sessions/${sessionId}/feedback`);
+}
+
+export async function retryFeedback(
+  sessionId: string,
+): Promise<{ ok: boolean; feedback: Feedback | null; feedbackError: string | null; error?: string }> {
+  return request(`/api/sessions/${sessionId}/feedback`, { method: "POST" });
 }
 
 // --- Calls ---

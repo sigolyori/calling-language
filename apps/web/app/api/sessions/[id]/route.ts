@@ -12,10 +12,22 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   });
   if (!session) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const feedbackUnavailableReason =
-    session.status === "completed" && !session.feedback && !env.ANTHROPIC_API_KEY
-      ? "no_api_key"
-      : null;
+  let feedbackStatus:
+    | "success"
+    | "pending"
+    | "failed"
+    | "too_short"
+    | "no_api_key"
+    | null = null;
 
-  return NextResponse.json({ ...session, feedbackUnavailableReason });
+  if (session.feedback) {
+    feedbackStatus = "success";
+  } else if (session.status === "completed") {
+    if (!env.ANTHROPIC_API_KEY) feedbackStatus = "no_api_key";
+    else if (session.feedbackError === "transcript_too_short") feedbackStatus = "too_short";
+    else if (session.feedbackError) feedbackStatus = "failed";
+    else feedbackStatus = "pending";
+  }
+
+  return NextResponse.json({ ...session, feedbackStatus });
 }

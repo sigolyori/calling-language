@@ -21,13 +21,18 @@ const feedbackSchema = z.object({
 export async function generateFeedback(sessionId: string) {
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
-    include: { transcript: true, user: true },
+    include: { transcript: true, user: true, feedback: true },
   });
   if (!session?.transcript) return;
+  if (session.feedback) return;
 
   const words = session.transcript.rawText.trim().split(/\s+/).filter(Boolean).length;
   if (words < 30) {
     console.log(`[Feedback] Too short (${words} words), skipping ${sessionId}`);
+    await prisma.session.update({
+      where: { id: sessionId },
+      data: { feedbackError: "transcript_too_short" },
+    });
     return;
   }
 
@@ -37,42 +42,58 @@ export async function generateFeedback(sessionId: string) {
     return;
   }
 
-  const msg = await client.messages.create({
-    model: SONNET_MODEL,
-    max_tokens: 1500,
-    temperature: 0.2,
-    system: OPIC_EVALUATOR_SYSTEM,
-    messages: [
-      {
-        role: "user",
-        content: buildOpicEvaluatorUserPrompt({
-          rawTranscript: session.transcript.rawText,
-          selfReportedLevel: session.user.englishLevel,
-        }),
+  try {
+    const msg = await client.messages.create({
+      model: SONNET_MODEL,
+      max_tokens: 1500,
+      temperature: 0.2,
+      system: OPIC_EVALUATOR_SYSTEM,
+      messages: [
+        {
+          role: "user",
+          content: buildOpicEvaluatorUserPrompt({
+            rawTranscript: session.transcript.rawText,
+            selfReportedLevel: session.user.englishLevel,
+          }),
+        },
+      ],
+    });
+
+    console.log(
+      `[Feedback tokens] session=${sessionId} input=${msg.usage.input_tokens} output=${msg.usage.output_tokens}`,
+    );
+
+    const content = msg.content[0];
+    if (content.type !== "text") throw new Error("Unexpected response type");
+
+    const cleaned = stripJsonFences(content.text);
+    const parsed = feedbackSchema.parse(JSON.parse(cleaned));
+    await prisma.feedback.create({
+      data: {
+        sessionId,
+        userId: session.userId,
+        opicLevel: parsed.opicLevel,
+        opicRationale: parsed.opicRationale,
+        strengths: parsed.strengths,
+        improvements: parsed.improvements,
+        specificExamples: parsed.specificExamples,
+        overallSummary: parsed.overallSummary,
       },
-    ],
-  });
-
-  console.log(
-    `[Feedback tokens] session=${sessionId} input=${msg.usage.input_tokens} output=${msg.usage.output_tokens}`,
-  );
-
-  const content = msg.content[0];
-  if (content.type !== "text") throw new Error("[Feedback] Unexpected response type");
-
-  const cleaned = stripJsonFences(content.text);
-  const parsed = feedbackSchema.parse(JSON.parse(cleaned));
-  await prisma.feedback.create({
-    data: {
-      sessionId,
-      userId: session.userId,
-      opicLevel: parsed.opicLevel,
-      opicRationale: parsed.opicRationale,
-      strengths: parsed.strengths,
-      improvements: parsed.improvements,
-      specificExamples: parsed.specificExamples,
-      overallSummary: parsed.overallSummary,
-    },
-  });
-  console.log(`[Feedback] Generated for session ${sessionId} — level=${parsed.opicLevel}`);
+    });
+    // Clear any prior failure marker on success.
+    if (session.feedbackError) {
+      await prisma.session.update({
+        where: { id: sessionId },
+        data: { feedbackError: null },
+      });
+    }
+    console.log(`[Feedback] Generated for session ${sessionId} — level=${parsed.opicLevel}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await prisma.session.update({
+      where: { id: sessionId },
+      data: { feedbackError: message.slice(0, 500) },
+    });
+    throw err;
+  }
 }
