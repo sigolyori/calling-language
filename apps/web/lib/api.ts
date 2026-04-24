@@ -181,9 +181,12 @@ export type OpicLevel =
   | "AH"
   | "Superior";
 
+export type CallType = "pstn" | "webrtc";
+
 export interface SessionSummary {
   id: string;
   status: string;
+  callType?: CallType;
   startedAt: string | null;
   endedAt: string | null;
   durationSecs: number | null;
@@ -260,6 +263,33 @@ export async function retryFeedback(
 }
 
 // --- Calls ---
-export async function triggerCall(): Promise<{ sessionId: string; callId: string }> {
-  return request("/api/calls/trigger", { method: "POST" });
+export async function triggerPstnCall(scheduleId?: string): Promise<{
+  ok: true;
+  sessionId: string;
+  vapiCallId: string;
+  callingNumber: string;
+}> {
+  return request("/api/calls/trigger/pstn", {
+    method: "POST",
+    body: JSON.stringify(scheduleId ? { scheduleId } : {}),
+  });
+}
+
+export interface WebrtcCallPayload {
+  ok: true;
+  sessionId: string;
+  assistantId: string;
+  assistantOverrides: Record<string, unknown>;
+  publicKey: string;
+}
+
+export async function triggerWebrtcCall(): Promise<WebrtcCallPayload> {
+  return request("/api/calls/trigger/webrtc", { method: "POST" });
+}
+
+export async function patchVapiCallId(sessionId: string, vapiCallId: string): Promise<{ ok: true }> {
+  return request(`/api/calls/${sessionId}/vapi-id`, {
+    method: "PATCH",
+    body: JSON.stringify({ vapiCallId }),
+  });
 }

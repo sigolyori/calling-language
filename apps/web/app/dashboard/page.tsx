@@ -8,12 +8,15 @@ import {
   getSessions,
   getSchedules,
   deleteSchedule,
-  triggerCall,
+  triggerPstnCall,
   clearToken,
   type User,
   type SessionSummary,
   type Schedule,
 } from "@/lib/api";
+
+type CallMode = "webrtc" | "pstn";
+const CALL_MODE_KEY = "preferredCallMode";
 import { SessionCard } from "@/components/SessionCard";
 
 const DAY_NAMES = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -28,6 +31,17 @@ export default function DashboardPage() {
   const [total, setTotal] = useState(0);
   const [calling, setCalling] = useState(false);
   const [callMsg, setCallMsg] = useState("");
+  const [callMode, setCallMode] = useState<CallMode>("webrtc");
+
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem(CALL_MODE_KEY) : null;
+    if (saved === "webrtc" || saved === "pstn") setCallMode(saved);
+  }, []);
+
+  function handleSelectMode(mode: CallMode) {
+    setCallMode(mode);
+    if (typeof window !== "undefined") window.localStorage.setItem(CALL_MODE_KEY, mode);
+  }
 
   const load = useCallback(async () => {
     try {
@@ -51,11 +65,15 @@ export default function DashboardPage() {
     load();
   }, [load]);
 
-  async function handleTriggerCall() {
+  async function handleStartCall() {
+    if (callMode === "webrtc") {
+      router.push("/call");
+      return;
+    }
     setCalling(true);
     setCallMsg("");
     try {
-      await triggerCall();
+      await triggerPstnCall();
       setCallMsg("전화를 거는 중입니다. 잠시 후 전화가 옵니다!");
     } catch (err) {
       setCallMsg(err instanceof Error ? err.message : "전화 실패");
@@ -115,17 +133,46 @@ export default function DashboardPage() {
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
         {/* Test Call */}
         <section className="card bg-green-50 border border-green-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-semibold text-green-800">지금 바로 연습하기</div>
-              <div className="text-sm text-green-600 mt-0.5">스케줄 없이 즉시 AI 코치에게 전화를 받아보세요</div>
+          <div className="mb-3">
+            <div className="font-semibold text-green-800">지금 바로 연습하기</div>
+            <div className="text-sm text-green-600 mt-0.5">
+              {callMode === "webrtc"
+                ? "브라우저에서 마이크로 바로 대화를 시작합니다"
+                : "등록된 휴대폰 번호로 Alex가 전화를 겁니다"}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="inline-flex rounded-lg bg-white border border-green-200 p-1">
+              <button
+                type="button"
+                onClick={() => handleSelectMode("webrtc")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  callMode === "webrtc"
+                    ? "bg-green-600 text-white"
+                    : "text-green-700 hover:bg-green-50"
+                }`}
+              >
+                🎧 브라우저
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectMode("pstn")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  callMode === "pstn"
+                    ? "bg-green-600 text-white"
+                    : "text-green-700 hover:bg-green-50"
+                }`}
+              >
+                📞 전화
+              </button>
             </div>
             <button
-              onClick={handleTriggerCall}
+              onClick={handleStartCall}
               disabled={calling}
-              className="btn-primary bg-green-600 hover:bg-green-700 whitespace-nowrap"
+              className="btn-primary bg-green-600 hover:bg-green-700 whitespace-nowrap ml-auto"
             >
-              {calling ? "연결 중..." : "📞 지금 전화"}
+              {calling ? "연결 중..." : "통화 시작"}
             </button>
           </div>
           {callMsg && (

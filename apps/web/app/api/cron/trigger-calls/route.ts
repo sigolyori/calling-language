@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/server/prisma";
 import { triggerOutboundCall } from "@/lib/server/vapi";
-import { prepareAssistantOverrides } from "@/lib/server/call-prep";
+import { createCallSession } from "@/lib/server/session-create";
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -43,13 +43,14 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-      const session = await prisma.session.create({
-        data: { userId: schedule.userId, scheduleId: schedule.id, status: "scheduled" },
+      const { sessionId, overrides } = await createCallSession({
+        userId: schedule.userId,
+        callType: "pstn",
+        scheduleId: schedule.id,
       });
-      const overrides = await prepareAssistantOverrides(schedule.userId, session.id);
-      const callId = await triggerOutboundCall(schedule.user.phoneNumber, session.id, overrides);
+      const callId = await triggerOutboundCall(schedule.user.phoneNumber, sessionId, overrides);
       await prisma.session.update({
-        where: { id: session.id },
+        where: { id: sessionId },
         data: { vapiCallId: callId, status: "in_progress" },
       });
       results.push({ userId: schedule.userId, status: "called" });

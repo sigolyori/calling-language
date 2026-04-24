@@ -60,6 +60,12 @@ export async function POST(req: NextRequest) {
       ? await prisma.session.findUnique({ where: { id: sessionId } })
       : await prisma.session.findFirst({ where: { vapiCallId } });
 
+    if (session) {
+      console.log(
+        `[Webhook] end-of-call sessionId=${session.id} callType=${session.callType} status=${status} durationSecs=${durationSecs}`,
+      );
+    }
+
     if (session && rawText.trim()) {
       await prisma.transcript.upsert({
         where: { sessionId: session.id },

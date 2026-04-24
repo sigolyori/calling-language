@@ -33,6 +33,11 @@ model Schedule {
   sessions   Session[]
 }
 
+enum CallType {
+  pstn
+  webrtc
+}
+
 model Session {
   id           String      @id @default(cuid())
   userId       String
@@ -40,6 +45,7 @@ model Session {
   scheduleId   String?
   schedule     Schedule?   @relation(fields: [scheduleId], references: [id])
   status       String      @default("scheduled") // "scheduled"|"in_progress"|"completed"|"failed"|"missed"
+  callType     CallType    @default(pstn)
   vapiCallId   String?     @unique
   startedAt    DateTime?
   endedAt      DateTime?
