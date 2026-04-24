@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/server/prisma";
 import { triggerOutboundCall } from "@/lib/server/vapi";
 import { createCallSession } from "@/lib/server/session-create";
+import { sendIncomingCallPush } from "@/lib/server/push";
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
   // Load all active schedules and match against each user's local time
   const allSchedules = await prisma.schedule.findMany({
     where: { isActive: true },
-    include: { user: true },
+    include: { user: { include: { deviceTokens: true } } },
   });
 
   const matching = allSchedules.filter((schedule) => {
@@ -42,18 +43,43 @@ export async function GET(req: NextRequest) {
       continue;
     }
 
+    const deviceTokens = schedule.user.deviceTokens;
+    const hasMobile = deviceTokens.length > 0;
+
     try {
-      const { sessionId, overrides } = await createCallSession({
-        userId: schedule.userId,
-        callType: "pstn",
-        scheduleId: schedule.id,
-      });
-      const callId = await triggerOutboundCall(schedule.user.phoneNumber, sessionId, overrides);
-      await prisma.session.update({
-        where: { id: sessionId },
-        data: { vapiCallId: callId, status: "in_progress" },
-      });
-      results.push({ userId: schedule.userId, status: "called" });
+      if (hasMobile) {
+        const { sessionId } = await createCallSession({
+          userId: schedule.userId,
+          callType: "webrtc",
+          scheduleId: schedule.id,
+        });
+        const pushResults = await Promise.all(
+          deviceTokens.map((dt) =>
+            sendIncomingCallPush({ expoPushToken: dt.expoPushToken, sessionId }),
+          ),
+        );
+        const anyOk = pushResults.some((r) => r.ok);
+        if (!anyOk) {
+          const errs = pushResults.map((r) => r.error).filter(Boolean).join(" | ");
+          console.error(`[Cron] All pushes failed for user ${schedule.userId}: ${errs}`);
+          await prisma.session.update({ where: { id: sessionId }, data: { status: "failed" } });
+          results.push({ userId: schedule.userId, status: "push_failed" });
+        } else {
+          results.push({ userId: schedule.userId, status: "pushed" });
+        }
+      } else {
+        const { sessionId, overrides } = await createCallSession({
+          userId: schedule.userId,
+          callType: "pstn",
+          scheduleId: schedule.id,
+        });
+        const callId = await triggerOutboundCall(schedule.user.phoneNumber, sessionId, overrides);
+        await prisma.session.update({
+          where: { id: sessionId },
+          data: { vapiCallId: callId, status: "in_progress" },
+        });
+        results.push({ userId: schedule.userId, status: "called" });
+      }
     } catch (err) {
       console.error(`[Cron] Failed for user ${schedule.userId}:`, err);
       results.push({ userId: schedule.userId, status: "failed" });

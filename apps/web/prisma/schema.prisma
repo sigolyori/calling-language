@@ -20,6 +20,19 @@ model User {
   sessions       Session[]
   feedbacks      Feedback[]
   learnerProfile LearnerProfile?
+  deviceTokens   DeviceToken[]
+}
+
+model DeviceToken {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expoPushToken String   @unique
+  platform      String   // "android" | "ios"
+  createdAt     DateTime @default(now())
+  lastSeenAt    DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Schedule {
