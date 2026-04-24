@@ -8,9 +8,6 @@
     "dev:web": "npm run start --workspace=apps/web",
     "dev:mobile": "npm run start --workspace=apps/mobile"
   },
-  "overrides": {
-    "@types/react": "19.1.17"
-  },
   "engines": {
     "node": ">=20"
   }
