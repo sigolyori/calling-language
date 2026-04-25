@@ -1,20 +1,25 @@
-// Module top-level side-effect: registers FCM background message handler.
-// Imported once from app/_layout.tsx so it runs before any message arrives.
+// Module top-level side-effect: registers FCM background handler that
+// shows a heads-up + full-screen-intent notification via notifee. Imported
+// once from app/_layout.tsx so the handler is registered before any
+// message arrives, even when the app is killed.
 
-import "react-native-get-random-values";
 import messaging from "@react-native-firebase/messaging";
+import notifee, {
+  AndroidCategory,
+  AndroidImportance,
+  AndroidVisibility,
+} from "@notifee/react-native";
 import { Platform } from "react-native";
-import RNCallKeep from "react-native-callkeep";
-import { setSessionForCall } from "./call-store";
 
-function generateUUID(): string {
-  type Crypto = { randomUUID?: () => string };
-  const c = (globalThis as unknown as { crypto?: Crypto }).crypto;
-  if (c?.randomUUID) return c.randomUUID();
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (ch) => {
-    const r = (Math.random() * 16) | 0;
-    const v = ch === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
+export const INCOMING_CALL_CHANNEL_ID = "incoming-call";
+
+async function ensureChannel(): Promise<void> {
+  await notifee.createChannel({
+    id: INCOMING_CALL_CHANNEL_ID,
+    name: "Incoming calls",
+    importance: AndroidImportance.HIGH,
+    vibration: true,
+    sound: "default",
   });
 }
 
@@ -28,19 +33,30 @@ if (Platform.OS === "android") {
       return;
     }
 
-    const callUUID = generateUUID();
-    await setSessionForCall(callUUID, sessionId);
-
-    try {
-      RNCallKeep.displayIncomingCall(
-        callUUID,
-        "Alex",
-        "Alex (English Coach)",
-        "generic",
-        false,
-      );
-    } catch (err) {
-      console.warn("[fcm-bg] displayIncomingCall failed", err);
-    }
+    await ensureChannel();
+    await notifee.displayNotification({
+      id: sessionId,
+      title: "Alex (English Coach)",
+      body: "영어 회화 통화 — 받기를 누르세요",
+      data: { sessionId, type: "incoming_call" },
+      android: {
+        channelId: INCOMING_CALL_CHANNEL_ID,
+        category: AndroidCategory.CALL,
+        importance: AndroidImportance.HIGH,
+        visibility: AndroidVisibility.PUBLIC,
+        // fullScreenAction wakes the screen and shows our app full-screen
+        // even when the device is locked / app is killed.
+        fullScreenAction: { id: "incoming-call", launchActivity: "default" },
+        pressAction: { id: "incoming-call", launchActivity: "default" },
+        ongoing: true,
+        autoCancel: false,
+        loopSound: true,
+        showTimestamp: false,
+        actions: [
+          { title: "받기", pressAction: { id: "answer", launchActivity: "default" } },
+          { title: "거절", pressAction: { id: "decline" } },
+        ],
+      },
+    });
   });
 }

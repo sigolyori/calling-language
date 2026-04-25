@@ -10,13 +10,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import notifee from "@notifee/react-native";
 import {
   ApiError,
   hydrateSession,
   patchVapiCallId,
   type HydrateSessionPayload,
 } from "@/lib/api";
-import { endCallKeepForSession } from "@/lib/callkeep";
 import { useVapiCall, type CallStatus } from "@/lib/useVapiCall";
 
 function formatElapsed(secs: number): string {
@@ -42,6 +42,9 @@ export default function CallScreen() {
   const [hydrateError, setHydrateError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Dismiss the heads-up incoming-call notification once we're inside
+    // the call screen (it was ongoing+autoCancel:false in fcm-background).
+    notifee.cancelNotification(sessionId).catch(() => {});
     (async () => {
       try {
         const p = await hydrateSession(sessionId);
@@ -99,7 +102,8 @@ function CallRoom({
       );
     },
     onEnd: () => {
-      endCallKeepForSession(sessionId);
+      // Cancel the heads-up incoming-call notification (id == sessionId).
+      notifee.cancelNotification(sessionId).catch(() => {});
       setTimeout(() => router.replace(`/sessions/${sessionId}`), 800);
     },
   });
