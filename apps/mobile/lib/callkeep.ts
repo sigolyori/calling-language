@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Platform } from "react-native";
+import { PermissionsAndroid, Platform } from "react-native";
 import RNCallKeep from "react-native-callkeep";
 import { takeSessionForCall } from "./call-store";
 
@@ -24,10 +24,31 @@ export function endCallKeepForSession(sessionId: string): void {
   }
 }
 
+async function ensurePhoneNumbersPermission(): Promise<void> {
+  if (Platform.OS !== "android") return;
+  try {
+    await PermissionsAndroid.request(
+      // READ_PHONE_NUMBERS is dangerous on Android 8+; without runtime grant
+      // selfManaged ConnectionService crashes on incoming-call delivery.
+      "android.permission.READ_PHONE_NUMBERS" as never,
+      {
+        title: "전화 기능 권한",
+        message: "Alex 전화를 받기 위해 필요합니다",
+        buttonPositive: "허용",
+        buttonNegative: "취소",
+      },
+    );
+  } catch {
+    // Older API levels don't have READ_PHONE_NUMBERS; ignore.
+  }
+}
+
 export async function setupCallKeep(): Promise<void> {
   if (Platform.OS !== "android") return;
   if (setupDone) return;
   setupDone = true;
+
+  await ensurePhoneNumbersPermission();
 
   try {
     await RNCallKeep.setup({
@@ -36,7 +57,10 @@ export async function setupCallKeep(): Promise<void> {
         alertDescription: "Alex의 전화를 받으려면 권한을 허용해주세요",
         cancelButton: "취소",
         okButton: "허용",
-        additionalPermissions: [],
+        // Samsung's TelecomManager.getPhoneAccount requires this even in
+        // selfManaged mode — without it, the ConnectionService crashes
+        // with SecurityException when delivering an incoming call.
+        additionalPermissions: ["android.permission.READ_PHONE_NUMBERS"],
         // selfManaged uses ConnectionService directly so the call stays
         // inside our app instead of being handed to the carrier's phone
         // app (e.g. LG U+ 익시오). Requires Android 10+ (API 29).
