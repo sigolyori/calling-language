@@ -34,9 +34,13 @@ yarn-error.*
 .env
 .env*.local
 
-# Firebase credentials (attach via EAS credentials, not git)
-google-services.json
+# Firebase iOS plist (we keep google-services.json in repo since it
+# is non-secret per Firebase docs and required by EAS Android builds)
 GoogleService-Info.plist
+# Service Account JSON (FCM V1) IS secret — must never be committed.
+# Lives only in EAS credentials and Vercel env, never in repo.
+*-firebase-adminsdk-*.json
+service-account*.json
 
 # typescript
 *.tsbuildinfo

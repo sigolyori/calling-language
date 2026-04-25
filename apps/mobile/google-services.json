@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "983670581237",
+    "project_id": "calling-language-80b13",
+    "storage_bucket": "calling-language-80b13.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:983670581237:android:70de06a5e58ba87f0fa2bc",
+        "android_client_info": {
+          "package_name": "com.callinglanguage.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKBzlDR1v-Wkb2Vgmr5FW2_IANrGXkt1M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

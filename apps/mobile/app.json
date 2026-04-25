@@ -14,6 +14,7 @@
     },
     "android": {
       "package": "com.callinglanguage.mobile",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#16a34a",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -26,12 +27,28 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.BLUETOOTH_CONNECT",
         "android.permission.INTERNET",
-        "android.permission.ACCESS_NETWORK_STATE"
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.MANAGE_OWN_CALLS",
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_PHONE_CALL",
+        "android.permission.WAKE_LOCK"
       ]
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      "@config-plugins/react-native-callkeep",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#16a34a"
+        }
+      ],
       [
         "expo-splash-screen",
         {

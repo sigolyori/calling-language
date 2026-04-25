@@ -1,9 +1,13 @@
+import "@/lib/fcm-background"; // side-effect: registers FCM background handler
+
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import "react-native-reanimated";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { setupCallKeep } from "@/lib/callkeep";
+import { registerForPushAsync } from "@/lib/push";
 
 function AuthGate() {
   const { user, loading } = useAuth();
@@ -16,6 +20,15 @@ function AuthGate() {
     if (!user && !inAuth) router.replace("/(auth)/login");
     else if (user && inAuth) router.replace("/(tabs)");
   }, [loading, user, segments, router]);
+
+  // After login: register push token + bootstrap CallKeep (Android only).
+  useEffect(() => {
+    if (!user) return;
+    setupCallKeep().catch((e) => console.warn("[layout] setupCallKeep", e));
+    registerForPushAsync().catch((e) =>
+      console.warn("[layout] registerForPushAsync", e),
+    );
+  }, [user]);
 
   if (loading) {
     return (
