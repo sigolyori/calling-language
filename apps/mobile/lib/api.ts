@@ -248,12 +248,12 @@ export async function patchVapiCallId(
 
 // --- Devices (push tokens) ---
 export async function registerDevice(data: {
-  expoPushToken: string;
+  fcmToken: string;
   platform: "android" | "ios";
 }): Promise<{ ok: true; id: string }> {
   return request("/api/devices/register", { method: "POST", body: JSON.stringify(data) });
 }
 
-export async function unregisterDevice(expoPushToken: string): Promise<void> {
-  return request(`/api/devices/${encodeURIComponent(expoPushToken)}`, { method: "DELETE" });
+export async function unregisterDevice(fcmToken: string): Promise<void> {
+  return request(`/api/devices/${encodeURIComponent(fcmToken)}`, { method: "DELETE" });
 }

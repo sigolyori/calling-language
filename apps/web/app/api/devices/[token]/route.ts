@@ -10,7 +10,7 @@ export async function DELETE(
   if (!uid) return unauthorized();
 
   const { count } = await prisma.deviceToken.deleteMany({
-    where: { expoPushToken: params.token, userId: uid },
+    where: { fcmToken: params.token, userId: uid },
   });
 
   return NextResponse.json({ ok: true, deleted: count });

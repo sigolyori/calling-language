@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       });
       const pushResults = await Promise.all(
         deviceTokens.map((dt) =>
-          sendIncomingCallPush({ expoPushToken: dt.expoPushToken, sessionId }),
+          sendIncomingCallPush({ fcmToken: dt.fcmToken, sessionId }),
         ),
       );
       const anyOk = pushResults.some((r) => r.ok);

@@ -1,71 +1,60 @@
-interface ExpoPushMessage {
-  to: string;
-  priority?: "default" | "high" | "normal";
-  channelId?: string;
-  ttl?: number;
-  data?: Record<string, unknown>;
-  title?: string;
-  body?: string;
-  sound?: string | null;
-}
+import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
 
-interface ExpoPushTicket {
-  status: "ok" | "error";
-  id?: string;
-  message?: string;
-  details?: { error?: string };
-}
+let initialized = false;
 
-interface ExpoPushResponse {
-  data?: ExpoPushTicket | ExpoPushTicket[];
-  errors?: Array<{ code: string; message: string }>;
+function ensureFirebaseInit(): boolean {
+  if (initialized) return true;
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!raw) {
+    console.warn("[push] FIREBASE_SERVICE_ACCOUNT_JSON not set");
+    return false;
+  }
+  try {
+    const sa = JSON.parse(raw) as {
+      project_id: string;
+      client_email: string;
+      private_key: string;
+    };
+    if (getApps().length === 0) {
+      initializeApp({
+        credential: cert({
+          projectId: sa.project_id,
+          clientEmail: sa.client_email,
+          privateKey: sa.private_key,
+        }),
+      });
+    }
+    initialized = true;
+    return true;
+  } catch (err) {
+    console.error("[push] Failed to init firebase-admin", err);
+    return false;
+  }
 }
-
-const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 export async function sendIncomingCallPush(params: {
-  expoPushToken: string;
+  fcmToken: string;
   sessionId: string;
-}): Promise<{ ok: boolean; ticket?: ExpoPushTicket; error?: string }> {
-  const message: ExpoPushMessage = {
-    to: params.expoPushToken,
-    priority: "high",
-    channelId: "incoming-call",
-    ttl: 60,
-    sound: null,
-    data: {
-      type: "incoming_call",
-      sessionId: params.sessionId,
-      callerName: "Alex",
-    },
-  };
+}): Promise<{ ok: boolean; messageId?: string; error?: string }> {
+  if (!ensureFirebaseInit()) {
+    return { ok: false, error: "firebase not initialized" };
+  }
 
   try {
-    const res = await fetch(EXPO_PUSH_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        "Accept-Encoding": "gzip, deflate",
+    const messageId = await getMessaging().send({
+      token: params.fcmToken,
+      android: {
+        priority: "high",
+        ttl: 60_000,
+        data: {
+          type: "incoming_call",
+          sessionId: params.sessionId,
+          callerName: "Alex",
+        },
       },
-      body: JSON.stringify(message),
     });
-
-    if (!res.ok) {
-      const text = await res.text();
-      return { ok: false, error: `Expo push HTTP ${res.status}: ${text}` };
-    }
-
-    const payload = (await res.json()) as ExpoPushResponse;
-    if (payload.errors?.length) {
-      return { ok: false, error: payload.errors.map((e) => e.message).join("; ") };
-    }
-
-    const ticket = Array.isArray(payload.data) ? payload.data[0] : payload.data;
-    if (ticket?.status === "error") {
-      return { ok: false, ticket, error: ticket.message ?? "push error" };
-    }
-    return { ok: true, ticket };
+    return { ok: true, messageId };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }

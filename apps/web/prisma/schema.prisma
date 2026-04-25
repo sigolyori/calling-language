@@ -24,13 +24,13 @@ model User {
 }
 
 model DeviceToken {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expoPushToken String   @unique
-  platform      String   // "android" | "ios"
-  createdAt     DateTime @default(now())
-  lastSeenAt    DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fcmToken   String   @unique
+  platform   String   // "android" | "ios"
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
 
   @@index([userId])
 }
