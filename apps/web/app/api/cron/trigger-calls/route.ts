@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/server/prisma";
-import { triggerOutboundCall } from "@/lib/server/vapi";
 import { createCallSession } from "@/lib/server/session-create";
 import { sendIncomingCallPush } from "@/lib/server/push";
 
@@ -13,7 +12,6 @@ export async function GET(req: NextRequest) {
 
   const now = new Date();
 
-  // Load all active schedules and match against each user's local time
   const allSchedules = await prisma.schedule.findMany({
     where: { isActive: true },
     include: { user: { include: { deviceTokens: true } } },
@@ -44,41 +42,33 @@ export async function GET(req: NextRequest) {
     }
 
     const deviceTokens = schedule.user.deviceTokens;
-    const hasMobile = deviceTokens.length > 0;
+    if (deviceTokens.length === 0) {
+      console.warn(
+        `[Cron] No DeviceToken for user ${schedule.userId} — skipping (PSTN deprecated)`,
+      );
+      results.push({ userId: schedule.userId, status: "no_device_token" });
+      continue;
+    }
 
     try {
-      if (hasMobile) {
-        const { sessionId } = await createCallSession({
-          userId: schedule.userId,
-          callType: "webrtc",
-          scheduleId: schedule.id,
-        });
-        const pushResults = await Promise.all(
-          deviceTokens.map((dt) =>
-            sendIncomingCallPush({ expoPushToken: dt.expoPushToken, sessionId }),
-          ),
-        );
-        const anyOk = pushResults.some((r) => r.ok);
-        if (!anyOk) {
-          const errs = pushResults.map((r) => r.error).filter(Boolean).join(" | ");
-          console.error(`[Cron] All pushes failed for user ${schedule.userId}: ${errs}`);
-          await prisma.session.update({ where: { id: sessionId }, data: { status: "failed" } });
-          results.push({ userId: schedule.userId, status: "push_failed" });
-        } else {
-          results.push({ userId: schedule.userId, status: "pushed" });
-        }
+      const { sessionId } = await createCallSession({
+        userId: schedule.userId,
+        callType: "webrtc",
+        scheduleId: schedule.id,
+      });
+      const pushResults = await Promise.all(
+        deviceTokens.map((dt) =>
+          sendIncomingCallPush({ expoPushToken: dt.expoPushToken, sessionId }),
+        ),
+      );
+      const anyOk = pushResults.some((r) => r.ok);
+      if (!anyOk) {
+        const errs = pushResults.map((r) => r.error).filter(Boolean).join(" | ");
+        console.error(`[Cron] All pushes failed for user ${schedule.userId}: ${errs}`);
+        await prisma.session.update({ where: { id: sessionId }, data: { status: "failed" } });
+        results.push({ userId: schedule.userId, status: "push_failed" });
       } else {
-        const { sessionId, overrides } = await createCallSession({
-          userId: schedule.userId,
-          callType: "pstn",
-          scheduleId: schedule.id,
-        });
-        const callId = await triggerOutboundCall(schedule.user.phoneNumber, sessionId, overrides);
-        await prisma.session.update({
-          where: { id: sessionId },
-          data: { vapiCallId: callId, status: "in_progress" },
-        });
-        results.push({ userId: schedule.userId, status: "called" });
+        results.push({ userId: schedule.userId, status: "pushed" });
       }
     } catch (err) {
       console.error(`[Cron] Failed for user ${schedule.userId}:`, err);
@@ -86,6 +76,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const localTime = now.toISOString();
-  return NextResponse.json({ time: localTime, checked: allSchedules.length, triggered: results.filter(r => r.status === "called").length, results });
+  return NextResponse.json({
+    time: now.toISOString(),
+    checked: allSchedules.length,
+    pushed: results.filter((r) => r.status === "pushed").length,
+    results,
+  });
 }
