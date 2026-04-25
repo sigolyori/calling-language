@@ -16,6 +16,7 @@ import {
   patchVapiCallId,
   type HydrateSessionPayload,
 } from "@/lib/api";
+import { endCallKeepForSession } from "@/lib/callkeep";
 import { useVapiCall, type CallStatus } from "@/lib/useVapiCall";
 
 function formatElapsed(secs: number): string {
@@ -98,6 +99,7 @@ function CallRoom({
       );
     },
     onEnd: () => {
+      endCallKeepForSession(sessionId);
       setTimeout(() => router.replace(`/sessions/${sessionId}`), 800);
     },
   });

@@ -6,6 +6,24 @@ import { takeSessionForCall } from "./call-store";
 let setupDone = false;
 let listenersAttached = false;
 
+// Maps the answered CallKeep callUUID to its sessionId so the in-call
+// screen can RNCallKeep.endCall(uuid) when Vapi terminates.
+const answeredCalls = new Map<string, string>();
+
+export function endCallKeepForSession(sessionId: string): void {
+  for (const [uuid, sid] of answeredCalls.entries()) {
+    if (sid === sessionId) {
+      try {
+        RNCallKeep.endCall(uuid);
+      } catch (err) {
+        console.warn("[callkeep] endCall failed", err);
+      }
+      answeredCalls.delete(uuid);
+      return;
+    }
+  }
+}
+
 export async function setupCallKeep(): Promise<void> {
   if (Platform.OS !== "android") return;
   if (setupDone) return;
@@ -40,10 +58,20 @@ function attachListeners() {
 
   RNCallKeep.addEventListener("answerCall", async ({ callUUID }) => {
     const sessionId = await takeSessionForCall(callUUID);
-    RNCallKeep.endCall(callUUID);
     if (!sessionId) {
       console.warn("[callkeep] answerCall: no sessionId for", callUUID);
+      RNCallKeep.endCall(callUUID);
       return;
+    }
+    // Mark CallKeep as "active" so Android keeps the call alive in the
+    // background telecom service while our /call screen runs Vapi.
+    // Calling endCall here would tear down the entire stack and Android
+    // perceives it as a hang-up.
+    answeredCalls.set(callUUID, sessionId);
+    try {
+      RNCallKeep.setCurrentCallActive(callUUID);
+    } catch (err) {
+      console.warn("[callkeep] setCurrentCallActive failed", err);
     }
     router.replace({
       pathname: "/call/[sessionId]",
@@ -52,6 +80,7 @@ function attachListeners() {
   });
 
   RNCallKeep.addEventListener("endCall", async ({ callUUID }) => {
+    answeredCalls.delete(callUUID);
     await takeSessionForCall(callUUID);
   });
 
