@@ -21,13 +21,23 @@ function AuthGate() {
     else if (user && inAuth) router.replace("/(tabs)");
   }, [loading, user, segments, router]);
 
-  // After login: register push token + bootstrap CallKeep (Android only).
+  // After login: notification permission first, then phone permission.
+  // Sequential so prompts don't race; user sees them in a predictable order.
   useEffect(() => {
     if (!user) return;
-    setupCallKeep().catch((e) => console.warn("[layout] setupCallKeep", e));
-    registerForPushAsync().catch((e) =>
-      console.warn("[layout] registerForPushAsync", e),
-    );
+    let cancelled = false;
+    (async () => {
+      try {
+        await registerForPushAsync();
+        if (cancelled) return;
+        await setupCallKeep();
+      } catch (e) {
+        console.warn("[layout] permission/setup failed", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   if (loading) {
