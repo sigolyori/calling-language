@@ -37,7 +37,10 @@ export async function setupCallKeep(): Promise<void> {
         cancelButton: "취소",
         okButton: "허용",
         additionalPermissions: [],
-        selfManaged: false,
+        // selfManaged uses ConnectionService directly so the call stays
+        // inside our app instead of being handed to the carrier's phone
+        // app (e.g. LG U+ 익시오). Requires Android 10+ (API 29).
+        selfManaged: true,
       },
       ios: {
         appName: "AI English Coach",
