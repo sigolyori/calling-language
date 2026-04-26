@@ -84,8 +84,10 @@ model Feedback {
   session          Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   userId           String
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  opicLevel        String   // OPIc: NL, NM, NH, IL, IM1, IM2, IM3, IH, AL, AM, AH, Superior
-  opicRationale    String   @db.Text
+  opicLevel        String   // [legacy] OPIc: NL, NM, NH, IL, IM1, IM2, IM3, IH, AL, AM, AH, Superior — preserved for audit
+  opicRationale    String   @db.Text // [legacy] preserved for audit
+  cefrLevel        String?  // CEFR-aligned estimate: A1 | A2 | B1 | B2 | C1 | C2
+  cefrRationale    String?  @db.Text
   strengths        String   @db.Text
   improvements     String   @db.Text
   specificExamples Json     // [{original, corrected, note}]
